@@ -26,10 +26,8 @@
           选择套餐
         </view>
         <view class="price-list">
-          <view
-            v-for="(price, index) in priceOptions" :key="index" class="price-card"
-            :class="{ selected: selectedPriceIndex === index }" @click="selectPrice(index)"
-          >
+          <view v-for="(price, index) in priceOptions" :key="index" class="price-card"
+            :class="{ selected: selectedPriceIndex === index }" @click="selectPrice(index)">
             <!-- 标签居中 -->
             <view v-if="price.tag" class="price-tag-center">
               {{ price.tag }}
@@ -77,7 +75,12 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-
+definePage({
+  style: {
+    navigationStyle: 'custom',
+    navigationBarTitleText: '服务内容',
+  },
+})
 // 服务内容
 const services = ref([
   {
@@ -207,6 +210,7 @@ function handleConfirm() {
 }
 
 .product-content {
+
   .service-section,
   .price-section {
     background: #fff;
@@ -449,6 +453,7 @@ function handleConfirm() {
           box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.1);
         }
       }
+
       &.selected .select-indicator-abs {
         border-color: #1890ff;
         box-shadow: 0 4rpx 16rpx rgba(24, 144, 255, 0.16);

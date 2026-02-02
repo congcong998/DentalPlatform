@@ -5,30 +5,28 @@
     "manifest.json": "jsonc" // manifest.json 可以写注释
   },
 
-  "stylelint.enable": false, // 禁用 stylelint
-  "css.validate": false, // 禁用 CSS 内置验证
-  "scss.validate": false, // 禁用 SCSS 内置验证
-  "less.validate": false, // 禁用 LESS 内置验证
+  // 禁用 Vetur
+  "vetur.validation.template": false,
+  "vetur.validation.script": false,
+  "vetur.validation.style": false,
+  "vetur.format.enable": false,
 
-  "typescript.tsdk": "node_modules/typescript/lib",
-  "explorer.fileNesting.enabled": true,
-  "explorer.fileNesting.expand": false,
-  "explorer.fileNesting.patterns": {
-    "README.md": "index.html,favicon.ico,robots.txt,CHANGELOG.md",
-    "docker.md": "Dockerfile,docker*.md,nginx*,.dockerignore",
-    "pages.config.ts": "manifest.config.ts,openapi-ts-request.config.ts",
-    "package.json": "tsconfig.json,pnpm-lock.yaml,pnpm-workspace.yaml,LICENSE,.gitattributes,.gitignore,.gitpod.yml,CNAME,.npmrc,.browserslistrc",
-    "eslint.config.mjs": ".commitlintrc.*,.prettier*,.editorconfig,.commitlint.cjs,.eslint*"
+  // 使用 Vue Official (Volar)
+  "[vue]": {
+    "editor.defaultFormatter": "Vue.volar"
   },
 
-  // Disable the default formatter, use eslint instead
-  "prettier.enable": false,
-  "editor.formatOnSave": false,
+  // TypeScript 配置
+  "typescript.tsdk": "node_modules/typescript/lib",
 
-  // Auto fix
+  // ESLint 配置
+  "eslint.validate": [
+    "javascript",
+    "typescript",
+    "vue"
+  ],
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit",
-    "source.organizeImports": "never"
+    "source.fixAll.eslint": "explicit"
   },
 
   // Silent the stylistic rules in you IDE, but still auto fix them

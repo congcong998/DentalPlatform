@@ -6,12 +6,7 @@
       </view>
       <view class="form-item">
         <text class="form-label">贷款类型</text>
-        <picker
-          mode="selector"
-          :range="loanTypeOptions"
-          :value="loanTypeIndex"
-          @change="onLoanTypeChange"
-        >
+        <picker mode="selector" :range="loanTypeOptions" :value="loanTypeIndex" @change="onLoanTypeChange">
           <view class="form-input picker-input">
             {{ loanTypeIndex !== -1 ? loanTypeOptions[loanTypeIndex] : '请选择贷款类型' }}
           </view>
@@ -19,21 +14,11 @@
       </view>
       <view class="form-item">
         <text class="form-label">还款金额</text>
-        <input
-          v-model="amount"
-          class="form-input"
-          type="number"
-          placeholder="请输入还款金额"
-        >
+        <input v-model="amount" class="form-input" type="number" placeholder="请输入还款金额">
       </view>
       <view class="form-item">
         <text class="form-label">还款周期</text>
-        <picker
-          mode="selector"
-          :range="cycleOptions"
-          :value="cycleIndex"
-          @change="onCycleChange"
-        >
+        <picker mode="selector" :range="cycleOptions" :value="cycleIndex" @change="onCycleChange">
           <view class="form-input picker-input">
             {{ cycleIndex !== -1 ? cycleOptions[cycleIndex] : '请选择还款周期' }}
           </view>
@@ -41,11 +26,7 @@
       </view>
       <view class="form-item">
         <text class="form-label">开始日期</text>
-        <picker
-          mode="date"
-          :value="startDate"
-          @change="onStartDateChange"
-        >
+        <picker mode="date" :value="startDate" @change="onStartDateChange">
           <view class="form-input picker-input">
             {{ startDate || '请选择开始日期' }}
           </view>
@@ -53,12 +34,7 @@
       </view>
       <view class="form-item">
         <text class="form-label">备注</text>
-        <input
-          v-model="remark"
-          class="form-input"
-          type="text"
-          placeholder="可填写备注"
-        >
+        <input v-model="remark" class="form-input" type="text" placeholder="可填写备注">
       </view>
       <view class="action-buttons">
         <button class="btn btn-cancel" @click="handleCancel">
@@ -100,7 +76,12 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-
+definePage({
+  style: {
+    navigationStyle: 'custom',
+    navigationBarTitleText: '还款设置',
+  },
+})
 const loanTypeOptions = ['信用贷', '车贷', '房贷', '消费贷', '经营贷']
 const loanTypeIndex = ref(-1)
 
@@ -161,6 +142,7 @@ function handleSubmit() {
   display: flex;
   justify-content: center;
 }
+
 .repayment-content {
   width: 100%;
   max-width: 680rpx;

@@ -11,7 +11,10 @@ onShow(() => {
   // “蜡笔小开心”提到本地是 '/pages/index/index'，线上是 '/' 导致线上 tabbar 不见了
   // 所以这里需要判断一下，如果是 '/' 就当做首页，也要显示 tabbar
   if (path === '/') {
-    isCurrentPageTabbar.value = true
+    isCurrentPageTabbar.value = false // 登录页不显示 tabbar
+  }
+  else if (path === '/pages/login/index') {
+    isCurrentPageTabbar.value = false // 登录页不显示 tabbar
   }
   else {
     isCurrentPageTabbar.value = isPageTabbar(path)

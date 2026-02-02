@@ -8,6 +8,15 @@ import { getAllPages, getLastPage, parseUrlToObj } from '@/utils/index'
 
 export const FG_LOG_ENABLE = false
 
+// 白名单页面（不需要登录）
+const whiteList = [
+  '/pages/login/index',
+  '/pages/agreement/index',
+  '/pages/about/index',
+  '/pages/contact/index',
+  '/pages/help/index',
+]
+
 export const navigateToInterceptor = {
   // 注意，这里的url是 '/' 开头的，如 '/pages/index/index'，跟 'pages.json' 里面的 path 不同
   // 增加对相对路径的处理，BY 网友 @ideal
@@ -46,6 +55,20 @@ export const navigateToInterceptor = {
 
     // 处理直接进入路由非首页时，tabbarIndex 不正确的问题
     tabbarStore.setAutoCurIdx(path)
+
+    // 检查是否需要登录
+    const token = uni.getStorageSync('token')
+    const isLogin = !!token
+
+    // 未登录且不在白名单中，跳转到登录页
+    if (!isLogin && !whiteList.includes(path)) {
+      uni.reLaunch({
+        url: '/pages/login/index',
+      })
+      return false
+    }
+
+    return true
   },
 }
 

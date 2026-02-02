@@ -47,12 +47,35 @@ export const useUserStore = defineStore(
       return res
     }
 
+    // 添加登录方法
+    async function loginByPhone(params: { encryptedData: string; iv: string; code: string }) {
+      // TODO: 调用后端登录接口
+      // const res = await api.loginByPhone(params)
+
+      // 模拟登录成功
+      const mockUserInfo = {
+        userId: 1,
+        username: 'user_' + Date.now(),
+        nickname: '微信用户',
+        avatar: '',
+        phone: '138****8888',
+      }
+
+      setUserInfo(mockUserInfo as any)
+
+      // 存储 token
+      uni.setStorageSync('token', 'mock_token_' + Date.now())
+
+      return mockUserInfo
+    }
+
     return {
       userInfo,
       clearUserInfo,
       fetchUserInfo,
       setUserInfo,
       setUserAvatar,
+      loginByPhone, // 添加到返回值
     }
   },
   {

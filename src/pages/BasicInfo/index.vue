@@ -13,12 +13,7 @@
           </view>
           <view class="info-item">
             <text class="item-label">性别</text>
-            <picker
-              mode="selector"
-              :range="genderOptions"
-              :value="genderIndex"
-              @change="onGenderChange"
-            >
+            <picker mode="selector" :range="genderOptions" :value="genderIndex" @change="onGenderChange">
               <view class="picker-text" :class="{ 'has-value': genderIndex !== -1 }">
                 {{ genderIndex !== -1 ? genderOptions[genderIndex] : '请选择性别' }}
               </view>
@@ -59,12 +54,7 @@
         <view class="info-grid">
           <view class="info-item">
             <text class="item-label">省份</text>
-            <picker
-              mode="selector"
-              :range="provinceOptions"
-              :value="provinceIndex"
-              @change="onProvinceChange"
-            >
+            <picker mode="selector" :range="provinceOptions" :value="provinceIndex" @change="onProvinceChange">
               <view class="picker-text" :class="{ 'has-value': provinceIndex !== -1 }">
                 {{ provinceIndex !== -1 ? provinceOptions[provinceIndex] : '请选择省份' }}
               </view>
@@ -72,13 +62,8 @@
           </view>
           <view class="info-item">
             <text class="item-label">城市</text>
-            <picker
-              mode="selector"
-              :range="cityOptions"
-              :value="cityIndex"
-              :disabled="provinceIndex === -1"
-              @change="onCityChange"
-            >
+            <picker mode="selector" :range="cityOptions" :value="cityIndex" :disabled="provinceIndex === -1"
+              @change="onCityChange">
               <view class="picker-text" :class="{ 'has-value': cityIndex !== -1, 'disabled': provinceIndex === -1 }">
                 {{ cityIndex !== -1 ? cityOptions[cityIndex] : '请选择城市' }}
               </view>
@@ -86,13 +71,8 @@
           </view>
           <view class="info-item">
             <text class="item-label">区县</text>
-            <picker
-              mode="selector"
-              :range="districtOptions"
-              :value="districtIndex"
-              :disabled="cityIndex === -1"
-              @change="onDistrictChange"
-            >
+            <picker mode="selector" :range="districtOptions" :value="districtIndex" :disabled="cityIndex === -1"
+              @change="onDistrictChange">
               <view class="picker-text" :class="{ 'has-value': districtIndex !== -1, 'disabled': cityIndex === -1 }">
                 {{ districtIndex !== -1 ? districtOptions[districtIndex] : '请选择区县' }}
               </view>
@@ -120,7 +100,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import areaData from './areaData' // 将省市区数据导入
-
+definePage({
+  style: {
+    navigationStyle: 'custom',
+    navigationBarTitleText: '基础信息',
+  },
+})
 const genderOptions = ['男', '女']
 const genderIndex = ref(-1)
 
