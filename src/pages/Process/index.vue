@@ -43,7 +43,7 @@
           <input v-model="form.name" class="common-input" placeholder="姓名 (OCR识别自动填充)">
         </view>
         <view class="form-row">
-          <input v-model="form.idNo" class="common-input" placeholder="身份证号 (OCR识别自动填充)" maxlength="18">
+          <input v-model="form.idCardNo" class="common-input" placeholder="身份证号 (OCR识别自动填充)" maxlength="18">
         </view>
 
         <!-- 身份证反面 -->
@@ -66,7 +66,7 @@
           </view>
         </view>
         <view class="form-row">
-          <input v-model="form.bankNo" class="common-input" type="number" placeholder="银行卡号 (OCR识别自动填充)">
+          <input v-model="form.cardNumber" class="common-input" type="number" placeholder="银行卡号 (OCR识别自动填充)">
         </view>
 
         <button class="btn-primary mt-40" @click="nextStep">
@@ -98,6 +98,34 @@
         <button class="btn-primary mt-40" @click="nextStep">
           下一步
         </button>
+      </view>
+
+      <!-- 签字弹层 -->
+      <view v-if="showSignPad" class="sign-modal">
+        <view class="sign-panel">
+          <view class="sign-title">
+            请在下方签字
+          </view>
+          <canvas
+            id="signCanvas"
+            canvas-id="signCanvas"
+            class="sign-canvas"
+            @touchstart.stop.prevent="onSignStart"
+            @touchmove.stop.prevent="onSignMove"
+            @touchend.stop.prevent="onSignEnd"
+          />
+          <view class="sign-actions">
+            <button class="sign-btn" @click="clearSign">
+              清空
+            </button>
+            <button class="sign-btn" @click="cancelSign">
+              取消
+            </button>
+            <button class="sign-btn primary" @click="confirmSign">
+              确认
+            </button>
+          </view>
+        </view>
       </view>
 
       <!-- 步骤3: 验证 & 签约 -->
@@ -143,22 +171,129 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, getCurrentInstance, nextTick, ref } from 'vue'
+
+definePage({
+  style: {
+    navigationBarTitleText: '签约流程',
+  },
+})
 
 const currentStep = ref(1)
 
 // 步骤1数据
 const form = ref({
   name: '',
-  idNo: '',
+  idCardNo: '',
   idFront: '',
   idBack: '',
   bankImg: '',
-  bankNo: '',
+  cardNumber: '',
+  idFrontFileUrl: '',
+  idBackFileUrl: '',
+  bankCardFileUrl: '',
 })
 
 // 步骤2数据
 const signatureImage = ref('')
+
+// 签字相关
+const showSignPad = ref(false)
+const isDrawing = ref(false)
+const hasSigned = ref(false)
+const lastPoint = ref({ x: 0, y: 0 })
+const canvasRect = ref({ left: 0, top: 0 })
+let signCtx: UniApp.CanvasContext | null = null
+const proxy = getCurrentInstance()?.proxy as any
+
+function initSignCanvas() {
+  signCtx = uni.createCanvasContext('signCanvas', proxy)
+  signCtx.setLineWidth(5)
+  signCtx.setStrokeStyle('#111111')
+  signCtx.setLineCap('round')
+  signCtx.setLineJoin('round')
+  signCtx.setFillStyle('#ffffff')
+  signCtx.fillRect(0, 0, 9999, 9999)
+  signCtx.draw()
+
+  const q = uni.createSelectorQuery()
+  if (proxy)
+    q.in(proxy)
+  q.select('#signCanvas').boundingClientRect((rect: any) => {
+    if (rect)
+      canvasRect.value = { left: rect.left || 0, top: rect.top || 0 }
+  }).exec()
+}
+
+function getTouchPoint(e: any) {
+  const t = e.touches?.[0] || e.changedTouches?.[0] || {}
+  return {
+    x: (t.clientX ?? t.pageX ?? t.x ?? 0) - canvasRect.value.left,
+    y: (t.clientY ?? t.pageY ?? t.y ?? 0) - canvasRect.value.top,
+  }
+}
+
+function onSignStart(e: any) {
+  if (!signCtx)
+    return
+  isDrawing.value = true
+  hasSigned.value = true
+  lastPoint.value = getTouchPoint(e)
+
+  // 点按也留痕
+  signCtx.beginPath()
+  signCtx.arc(lastPoint.value.x, lastPoint.value.y, 1.5, 0, 2 * Math.PI)
+  signCtx.fill()
+  signCtx.draw(true)
+}
+
+function onSignMove(e: any) {
+  if (!signCtx || !isDrawing.value)
+    return
+  const p = getTouchPoint(e)
+  signCtx.beginPath()
+  signCtx.moveTo(lastPoint.value.x, lastPoint.value.y)
+  signCtx.lineTo(p.x, p.y)
+  signCtx.stroke()
+  signCtx.draw(true)
+  lastPoint.value = p
+}
+
+function onSignEnd() {
+  isDrawing.value = false
+}
+
+function clearSign() {
+  if (!signCtx)
+    return
+  hasSigned.value = false
+  signCtx.setFillStyle('#ffffff')
+  signCtx.fillRect(0, 0, 9999, 9999)
+  signCtx.draw()
+}
+
+function confirmSign() {
+  if (!hasSigned.value) {
+    uni.showToast({ title: '请先签字', icon: 'none' })
+    return
+  }
+  uni.canvasToTempFilePath(
+    {
+      canvasId: 'signCanvas',
+      success: (res) => {
+        signatureImage.value = res.tempFilePath
+        showSignPad.value = false
+      },
+      fail: () => uni.showToast({ title: '签字保存失败', icon: 'none' }),
+    },
+    proxy,
+  )
+}
+
+function handleSign() {
+  showSignPad.value = true
+  nextTick(() => initSignCanvas())
+}
 
 // 步骤3数据
 const verifyCode = ref('')
@@ -169,41 +304,92 @@ const canSubmit = computed(() => {
   return verifyCode.value.length >= 4 && livenessPassed.value && isAgreed.value
 })
 
-// 图片选择与OCR模拟
+// OCR API
+const OCR_API = {
+  idFront: '/dental-finance/customer/customerInfo/ocr/idCardFront',
+  idBack: '/dental-finance/customer/customerInfo/ocr/idCardBack',
+  bankCard: '/dental-finance/customer/customerInfo/ocr/bankCard',
+} as const
+
+function parseUploadData(uploadRes: any) {
+  let data: any = uploadRes?.data
+  if (typeof data === 'string') {
+    try {
+      data = JSON.parse(data)
+    }
+    catch {
+      data = {}
+    }
+  }
+  return data || {}
+}
+
+function doOCR(type: 'idFront' | 'idBack' | 'bankCard', filePath: string) {
+  uni.showLoading({ title: '识别中...' })
+  uni.uploadFile({
+    url: OCR_API[type],
+    filePath,
+    name: 'file',
+    success: (uploadRes: any) => {
+      const data = parseUploadData(uploadRes)
+      const ok = uploadRes?.statusCode === 200 && (data?.code === 200 || data?.code === 0 || data?.success === true)
+      if (!ok) {
+        uni.showToast({ title: data?.message || '识别失败', icon: 'none' })
+        return
+      }
+
+      const result = data?.data || {}
+      if (type === 'idFront') {
+        form.value.name = result.name || form.value.name
+        form.value.idCardNo = result.idCardNo || result.idCard || result.idNo || result.number || form.value.idCardNo
+        form.value.idFrontFileUrl = result.fileUrl || form.value.idFrontFileUrl
+      }
+      else if (type === 'idBack') {
+        form.value.idBackFileUrl = result.fileUrl || form.value.idBackFileUrl
+      }
+      else if (type === 'bankCard') {
+        form.value.cardNumber = result.cardNumber || result.bankNo || result.cardNo || result.number || form.value.cardNumber
+        form.value.bankCardFileUrl = result.fileUrl || form.value.bankCardFileUrl
+      }
+
+      uni.showToast({ title: '识别成功', icon: 'success' })
+    },
+    fail: () => {
+      uni.showToast({ title: 'OCR请求失败', icon: 'none' })
+    },
+    complete: () => {
+      uni.hideLoading()
+    },
+  })
+}
+
+// 图片选择与OCR
 function chooseImage(type: 'idFront' | 'idBack' | 'bankCard') {
   uni.chooseImage({
     count: 1,
     success: (res) => {
       const filePath = res.tempFilePaths[0]
+      if (!filePath)
+        return
+
       if (type === 'idFront') {
         form.value.idFront = filePath
-        // 模拟OCR
-        uni.showLoading({ title: '识别中...' })
-        setTimeout(() => {
-          form.value.name = '张三'
-          form.value.idNo = '370202199001018888'
-          uni.hideLoading()
-        }, 800)
       }
       else if (type === 'idBack') {
         form.value.idBack = filePath
       }
-      else if (type === 'bankCard') {
+      else {
         form.value.bankImg = filePath
-        // 模拟OCR
-        uni.showLoading({ title: '识别中...' })
-        setTimeout(() => {
-          form.value.bankNo = '6222021234567890'
-          uni.hideLoading()
-        }, 800)
       }
+
+      doOCR(type, filePath)
     },
   })
 }
 
 function nextStep() {
   if (currentStep.value === 1) {
-    if (!form.value.name || !form.value.bankNo) {
+    if (!form.value.name || !form.value.idCardNo || !form.value.cardNumber) {
       uni.showToast({ title: '请完善信息', icon: 'none' })
       return
     }
@@ -218,33 +404,64 @@ function nextStep() {
   }
 }
 
-// 模拟签名
-function handleSign() {
-  uni.showModal({
-    title: '模拟签名',
-    content: '此处调用手写板组件，点击确定模拟签名完成',
-    success: (res) => {
-      if (res.confirm) {
-        // 使用个占位图或者base64
-        signatureImage.value = 'https://via.placeholder.com/150x50?text=Signature'
-      }
-    },
-  })
-}
-
 // 获取验证码
 function getVerifyCode() {
   uni.showToast({ title: '验证码已发送', icon: 'none' })
 }
 
 // 活体检测
+const LIVENESS_API = '/dental-finance/customer/customerInfo/liveness/check'
+
 function startLivenessCheck() {
-  uni.showLoading({ title: '检测中...' })
-  setTimeout(() => {
-    uni.hideLoading()
-    livenessPassed.value = true
-    uni.showToast({ title: '检测通过', icon: 'success' })
-  }, 1500)
+  uni.chooseVideo({
+    sourceType: ['camera'],
+    maxDuration: 10,
+    camera: 'front',
+    success: (res) => {
+      const videoPath = res.tempFilePath
+      if (!videoPath) {
+        uni.showToast({ title: '未获取到视频', icon: 'none' })
+        return
+      }
+
+      uni.showLoading({ title: '活体检测中...' })
+
+      uni.uploadFile({
+        url: LIVENESS_API,
+        filePath: videoPath,
+        name: 'video',
+        success: (uploadRes: any) => {
+          const data = parseUploadData(uploadRes)
+          const ok = uploadRes?.statusCode === 200 && (data?.code === 200 || data?.code === 0 || data?.success === true)
+
+          if (!ok) {
+            uni.showToast({ title: data?.message || '检测失败，请重试', icon: 'none' })
+            return
+          }
+
+          const result = data?.data || {}
+          const passed = result.passed === true || result.success === true || result.status === 'pass'
+
+          if (passed) {
+            livenessPassed.value = true
+            uni.showToast({ title: '活体检测通过', icon: 'success' })
+          }
+          else {
+            uni.showToast({ title: result.message || '检测未通过，请重试', icon: 'none' })
+          }
+        },
+        fail: () => {
+          uni.showToast({ title: '检测请求失败', icon: 'none' })
+        },
+        complete: () => {
+          uni.hideLoading()
+        },
+      })
+    },
+    fail: () => {
+      uni.showToast({ title: '录制取消', icon: 'none' })
+    },
+  })
 }
 
 function onAgreementChange(e: any) {
@@ -252,10 +469,12 @@ function onAgreementChange(e: any) {
 }
 
 function submitAll() {
-  uni.showToast({ title: '推广成功！签约完成', icon: 'success' })
+  uni.showToast({ title: '签约完成', icon: 'success' })
   setTimeout(() => {
-    uni.navigateBack({ delta: 2 }) // 返回到首页或列表
-  }, 1500)
+    uni.redirectTo({
+      url: '/pages/ServicePackage/index',
+    })
+  }, 1000)
 }
 </script>
 
@@ -509,5 +728,84 @@ function submitAll() {
       transform: scale(0.8);
     }
   }
+}
+
+/* 签字弹层优化 */
+.sign-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: flex-end;
+  z-index: 999;
+}
+
+.sign-panel {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(8px);
+  border-radius: 24rpx 24rpx 0 0;
+  padding: 20rpx 24rpx calc(24rpx + env(safe-area-inset-bottom));
+  box-shadow: 0 -12rpx 40rpx rgba(0, 0, 0, 0.12);
+}
+
+.sign-title {
+  position: relative;
+  text-align: center;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 14rpx 0 20rpx;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -12rpx;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 88rpx;
+    height: 8rpx;
+    border-radius: 999rpx;
+    background: #d1d5db;
+  }
+}
+
+.sign-canvas {
+  width: 100%;
+  height: 420rpx;
+  border-radius: 16rpx;
+  border: 3rpx solid #4b5563;
+  background-color: #fff;
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.15) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.15) 1px, transparent 1px);
+  background-size: 24rpx 24rpx;
+  box-shadow:
+    inset 0 0 0 2rpx #e5e7eb,
+    0 8rpx 20rpx rgba(2, 6, 23, 0.08);
+}
+
+.sign-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 22rpx;
+}
+
+.sign-btn {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  font-size: 28rpx;
+  border-radius: 12rpx;
+  border: 2rpx solid #d1d5db;
+  background: #fff;
+  color: #4b5563;
+}
+
+.sign-btn.primary {
+  border: none;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  box-shadow: 0 8rpx 20rpx rgba(37, 99, 235, 0.35);
 }
 </style>

@@ -20,7 +20,7 @@
       <view class="form-item">
         <text class="form-label">还款金额</text>
         <input
-          v-model="amount"
+          v-model="actualAmount"
           class="form-input"
           type="number"
           placeholder="请输入还款金额"
@@ -43,11 +43,11 @@
         <text class="form-label">开始日期</text>
         <picker
           mode="date"
-          :value="startDate"
-          @change="onStartDateChange"
+          :value="actualDate"
+          @change="onactualDateChange"
         >
           <view class="form-input picker-input">
-            {{ startDate || '请选择开始日期' }}
+            {{ actualDate || '请选择开始日期' }}
           </view>
         </picker>
       </view>
@@ -79,7 +79,7 @@
         </view>
         <view class="summary-row">
           <text class="summary-label">还款金额：</text>
-          <text>{{ amount || '-' }}</text>
+          <text>{{ actualAmount || '-' }}</text>
         </view>
         <view class="summary-row">
           <text class="summary-label">还款周期：</text>
@@ -87,7 +87,7 @@
         </view>
         <view class="summary-row">
           <text class="summary-label">开始日期：</text>
-          <text>{{ startDate || '-' }}</text>
+          <text>{{ actualDate || '-' }}</text>
         </view>
         <view class="summary-row">
           <text class="summary-label">备注：</text>
@@ -101,17 +101,25 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+definePage({
+  style: {
+    navigationBarTitleText: '贷款计划',
+  },
+})
+
 const loanTypeOptions = ['信用贷', '车贷', '房贷', '消费贷', '经营贷']
 const loanTypeIndex = ref(-1)
 
 const cycleOptions = ['每月', '每季', '每半年', '每年']
 const cycleIndex = ref(-1)
 
-const amount = ref('')
-const startDate = ref('')
+const actualAmount = ref('')
+const actualDate = ref('')
 const remark = ref('')
 
 const showSummary = ref(false)
+
+const REPAYMENT_ADD_API = '/dental-finance/repayment/repaymentPlan/add'
 
 function onLoanTypeChange(e: any) {
   loanTypeIndex.value = e.detail.value
@@ -121,8 +129,8 @@ function onCycleChange(e: any) {
   cycleIndex.value = e.detail.value
 }
 
-function onStartDateChange(e: any) {
-  startDate.value = e.detail.value
+function onactualDateChange(e: any) {
+  actualDate.value = e.detail.value
 }
 
 function handleCancel() {
@@ -132,21 +140,45 @@ function handleCancel() {
 function handleSubmit() {
   if (
     loanTypeIndex.value === -1
-    || !amount.value
+    || !actualAmount.value
     || cycleIndex.value === -1
-    || !startDate.value
+    || !actualDate.value
   ) {
     uni.showToast({ title: '请填写完整信息', icon: 'none' })
     return
   }
 
-  // 原有的逻辑
-  // showSummary.value = true
-  // uni.showToast({ title: '还款设置成功', icon: 'success' })
+  const payload = {
+    loanType: loanTypeOptions[loanTypeIndex.value],
+    actualAmount: Number(actualAmount.value),
+    cycle: cycleOptions[cycleIndex.value],
+    actualDate: actualDate.value,
+    remark: remark.value.trim(),
+  }
 
-  // 跳转到后续流程页面：信息补充 -> 电子签 -> 验证签约
-  uni.navigateTo({
-    url: '/pages/Process/index',
+  uni.showLoading({ title: '提交中...' })
+  uni.request({
+    url: REPAYMENT_ADD_API,
+    method: 'POST',
+    data: payload,
+    header: { 'Content-Type': 'application/json' },
+    success: (res: any) => {
+      const ok = res?.statusCode === 200 && (res?.data?.code === 200 || res?.data?.code === 0 || res?.data?.success === true)
+      if (ok) {
+        uni.showToast({ title: '提交成功', icon: 'success' })
+        setTimeout(() => {
+          uni.navigateTo({ url: '/pages/Process/index' })
+        }, 500)
+        return
+      }
+      uni.showToast({ title: res?.data?.message || '提交失败', icon: 'none' })
+    },
+    fail: () => {
+      uni.showToast({ title: '网络异常，请稍后重试', icon: 'none' })
+    },
+    complete: () => {
+      uni.hideLoading()
+    },
   })
 }
 </script>

@@ -9,16 +9,11 @@
         <view class="info-grid">
           <view class="info-item">
             <text class="item-label">姓名</text>
-            <input class="item-input" type="text" placeholder="请输入姓名">
+            <input v-model="name" class="item-input" type="text" placeholder="请输入姓名">
           </view>
           <view class="info-item">
             <text class="item-label">性别</text>
-            <picker
-              mode="selector"
-              :range="genderOptions"
-              :value="genderIndex"
-              @change="onGenderChange"
-            >
+            <picker mode="selector" :range="genderOptions" :value="genderIndex" @change="onGenderChange">
               <view class="picker-text" :class="{ 'has-value': genderIndex !== -1 }">
                 {{ genderIndex !== -1 ? genderOptions[genderIndex] : '请选择性别' }}
               </view>
@@ -26,11 +21,11 @@
           </view>
           <view class="info-item">
             <text class="item-label">年龄</text>
-            <input class="item-input" type="number" placeholder="请输入年龄">
+            <input v-model="age" class="item-input" type="number" placeholder="请输入年龄">
           </view>
           <view class="info-item">
             <text class="item-label">电话</text>
-            <input class="item-input" type="tel" placeholder="请输入电话号码">
+            <input v-model="phone" class="item-input" type="tel" placeholder="请输入电话号码">
           </view>
           <view class="info-item">
             <text class="item-label">证件号</text>
@@ -43,11 +38,11 @@
           </view>
           <view class="info-item">
             <text class="item-label">邮箱地址</text>
-            <input class="item-input" type="text" placeholder="请输入邮箱地址">
+            <input v-model="email" class="item-input" type="text" placeholder="请输入邮箱地址">
           </view>
           <view class="info-item">
             <text class="item-label">推荐码</text>
-            <input class="item-input" type="text" placeholder="请输入推荐码（可选）">
+            <input v-model="inviteCode" class="item-input" type="text" placeholder="请输入推荐码（可选）">
           </view>
         </view>
       </view>
@@ -59,12 +54,7 @@
         <view class="info-grid">
           <view class="info-item">
             <text class="item-label">省份</text>
-            <picker
-              mode="selector"
-              :range="provinceOptions"
-              :value="provinceIndex"
-              @change="onProvinceChange"
-            >
+            <picker mode="selector" :range="provinceOptions" :value="provinceIndex" @change="onProvinceChange">
               <view class="picker-text" :class="{ 'has-value': provinceIndex !== -1 }">
                 {{ provinceIndex !== -1 ? provinceOptions[provinceIndex] : '请选择省份' }}
               </view>
@@ -73,10 +63,7 @@
           <view class="info-item">
             <text class="item-label">城市</text>
             <picker
-              mode="selector"
-              :range="cityOptions"
-              :value="cityIndex"
-              :disabled="provinceIndex === -1"
+              mode="selector" :range="cityOptions" :value="cityIndex" :disabled="provinceIndex === -1"
               @change="onCityChange"
             >
               <view class="picker-text" :class="{ 'has-value': cityIndex !== -1, 'disabled': provinceIndex === -1 }">
@@ -87,10 +74,7 @@
           <view class="info-item">
             <text class="item-label">区县</text>
             <picker
-              mode="selector"
-              :range="districtOptions"
-              :value="districtIndex"
-              :disabled="cityIndex === -1"
+              mode="selector" :range="districtOptions" :value="districtIndex" :disabled="cityIndex === -1"
               @change="onDistrictChange"
             >
               <view class="picker-text" :class="{ 'has-value': districtIndex !== -1, 'disabled': cityIndex === -1 }">
@@ -100,7 +84,7 @@
           </view>
           <view class="info-item full-width">
             <text class="item-label">详细地址</text>
-            <textarea class="item-textarea" placeholder="请输入详细地址" />
+            <textarea v-model="detailAddress" class="item-textarea" placeholder="请输入详细地址" />
           </view>
         </view>
       </view>
@@ -121,11 +105,18 @@
 import { onMounted, ref } from 'vue'
 import areaData from './areaData' // 将省市区数据导入
 
+definePage({
+  style: {
+    navigationBarTitleText: '基础信息',
+  },
+})
+
 const genderOptions = ['男', '女']
 const genderIndex = ref(-1)
 
 // 身份证号
 const idCard = ref('')
+const idCardFrontFileUrl = ref('')
 
 // 省市区数据
 const provinceOptions = ref<string[]>([])
@@ -136,6 +127,14 @@ const cityIndex = ref(-1)
 
 const districtOptions = ref<string[]>([])
 const districtIndex = ref(-1)
+
+// 表单字段
+const name = ref('')
+const age = ref('')
+const phone = ref('')
+const email = ref('')
+const inviteCode = ref('')
+const detailAddress = ref('')
 
 // 存储完整的数据结构
 const areaFullData = ref(areaData)
@@ -194,27 +193,82 @@ function onDistrictChange(e: any) {
 }
 
 // 办理OCR识别
+const OCR_ID_CARD_FRONT_API = '/dental-finance/customer/customerInfo/ocr/idCardFront'
+
+function parseUploadData(uploadRes: any) {
+  const raw = uploadRes?.data
+  if (!raw)
+    return {}
+  if (typeof raw === 'object')
+    return raw
+  if (typeof raw === 'string') {
+    const text = raw.trim()
+    if (!text)
+      return {}
+    try {
+      return JSON.parse(text)
+    }
+    catch {
+      return {}
+    }
+  }
+  return {}
+}
+
 function handleOCR() {
   uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],
     sourceType: ['camera', 'album'],
     success: (res) => {
-      // 模拟OCR识别过程
-      uni.showLoading({
-        title: '智能识别中...',
-      })
+      const filePath = res.tempFilePaths?.[0]
+      if (!filePath) {
+        uni.showToast({ title: '未获取到图片', icon: 'none' })
+        return
+      }
 
-      // TODO: 实际项目中此处应上传 res.tempFilePaths[0] 到后端OCR接口
-      setTimeout(() => {
-        uni.hideLoading()
-        // 模拟识别结果（随机生成一个示例身份证号）
-        idCard.value = '370202199001018888'
-        uni.showToast({
-          title: '识别成功',
-          icon: 'success',
-        })
-      }, 1500)
+      uni.showLoading({ title: '智能识别中...' })
+
+      uni.uploadFile({
+        url: OCR_ID_CARD_FRONT_API,
+        filePath,
+        name: 'file',
+        success: (uploadRes: any) => {
+          const data: any = parseUploadData(uploadRes)
+
+          const ok = uploadRes?.statusCode === 200
+            && (data?.code === 200 || data?.code === 0 || data?.success === true)
+
+          if (!ok) {
+            uni.showToast({ title: data?.message || '识别失败', icon: 'none' })
+            return
+          }
+
+          const result = data?.data || {}
+          const ocrName = result.name || ''
+          const idNo = result.idCardNo || result.idCard || result.idNo || result.number || result.num || ''
+          const fileUrl = result.fileUrl || ''
+
+          if (ocrName && !name.value.trim())
+            name.value = ocrName
+          if (idNo)
+            idCard.value = idNo
+          if (fileUrl)
+            idCardFrontFileUrl.value = fileUrl
+
+          if (!idNo) {
+            uni.showToast({ title: '未识别到身份证号', icon: 'none' })
+            return
+          }
+          uni.showToast({ title: '识别成功', icon: 'success' })
+        },
+        fail: () => {
+          uni.showToast({ title: 'OCR请求失败', icon: 'none' })
+        },
+        complete: () => {
+          uni.hideLoading()
+        },
+      })
     },
   })
 }
@@ -224,9 +278,64 @@ function handleCancel() {
 }
 
 function handleSubmit() {
-  uni.showToast({
-    title: '提交成功',
-    icon: 'success',
+  if (!name.value.trim()) {
+    uni.showToast({ title: '请输入姓名', icon: 'none' })
+    return
+  }
+  if (!phone.value.trim()) {
+    uni.showToast({ title: '请输入电话号码', icon: 'none' })
+    return
+  }
+
+  const province = provinceIndex.value !== -1 ? provinceOptions.value[provinceIndex.value] : ''
+  const city = cityIndex.value !== -1 ? cityOptions.value[cityIndex.value] : ''
+  const district = districtIndex.value !== -1 ? districtOptions.value[districtIndex.value] : ''
+  const gender = genderIndex.value !== -1 ? genderOptions[genderIndex.value] : ''
+
+  const payload = {
+    name: name.value.trim(),
+    sex: gender,
+    age: age.value ? Number(age.value) : undefined,
+    phone: phone.value.trim(),
+    idCard: idCard.value.trim(),
+    idCardFrontFileUrl: idCardFrontFileUrl.value,
+    email: email.value.trim(),
+    inviteCode: inviteCode.value.trim(),
+    // province,
+    // city,
+    // district,
+    // detailAddress: detailAddress.value.trim(),
+    address: `${province}${city}${district}${detailAddress.value.trim()}`,
+  }
+
+  uni.showLoading({ title: '提交中...' })
+  uni.request({
+    url: '/dental-finance/customer/customerInfo/add',
+    method: 'POST',
+    data: payload,
+    header: { 'Content-Type': 'application/json' },
+    success: (res: any) => {
+      const ok = res?.statusCode === 200 && (res?.data?.code === 200 || res?.data?.success === true || res?.data?.code === 0)
+      if (ok) {
+        uni.showToast({ title: '提交成功', icon: 'success' })
+        setTimeout(() => {
+          uni.redirectTo({
+            url: '/pages/Product/index',
+          })
+        }, 500)
+        return
+      }
+      uni.showToast({ title: res?.data?.message || '提交失败', icon: 'none' })
+      uni.redirectTo({
+        url: '/pages/Product/index',
+      })
+    },
+    fail: () => {
+      uni.showToast({ title: '网络异常，请稍后重试', icon: 'none' })
+    },
+    complete: () => {
+      uni.hideLoading()
+    },
   })
 }
 </script>

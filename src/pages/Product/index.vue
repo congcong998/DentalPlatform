@@ -78,6 +78,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+definePage({
+  style: {
+    navigationBarTitleText: '服务套餐',
+  },
+})
+
 // 服务内容
 const services = ref([
   {
