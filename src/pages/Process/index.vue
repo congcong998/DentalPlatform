@@ -1,5 +1,19 @@
 <template>
   <view class="process-container">
+    <!-- 自定义导航栏 -->
+    <view class="custom-navbar">
+      <view :style="{ height: `${statusBarHeight}px` }" />
+      <view class="navbar-content">
+        <view class="navbar-back" @click="goBack">
+          <text class="back-icon">‹</text>
+        </view>
+        <view class="navbar-title">
+          办理流程
+        </view>
+        <view class="navbar-placeholder" />
+      </view>
+    </view>
+
     <!-- 步骤条 -->
     <view class="steps-header">
       <view class="step-item" :class="{ active: currentStep >= 1 }">
@@ -173,12 +187,24 @@
 <script setup lang="ts">
 import { computed, getCurrentInstance, nextTick, ref } from 'vue'
 
+defineOptions({
+  name: 'Process',
+})
+
 definePage({
   style: {
     navigationBarTitleText: '签约流程',
   },
 })
 
+definePage({
+  style: {
+    navigationStyle: 'custom',
+    navigationBarTitleText: '办理流程',
+  },
+})
+
+const statusBarHeight = ref(44)
 const currentStep = ref(1)
 
 // 步骤1数据
@@ -476,6 +502,15 @@ function submitAll() {
     })
   }, 1000)
 }
+
+function goBack() {
+  uni.navigateBack()
+}
+
+onMounted(() => {
+  const sysInfo = uni.getSystemInfoSync()
+  statusBarHeight.value = sysInfo.statusBarHeight || 44
+})
 </script>
 
 <style lang="scss" scoped>
@@ -483,6 +518,45 @@ function submitAll() {
   min-height: 100vh;
   background: #f5f7fa;
   padding-bottom: 40rpx;
+}
+
+.custom-navbar {
+  background: #fff;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+
+  .navbar-content {
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+  }
+
+  .navbar-back {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .back-icon {
+      font-size: 32px;
+      color: #333;
+      font-weight: bold;
+    }
+  }
+
+  .navbar-title {
+    flex: 1;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 500;
+    color: #333;
+  }
+
+  .navbar-placeholder {
+    width: 44px;
+  }
 }
 
 .steps-header {

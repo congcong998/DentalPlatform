@@ -157,3 +157,13 @@ export const isDoubleTokenMode = import.meta.env.VITE_AUTH_MODE === 'double'
  * 通常为 /pages/index/index
  */
 export const HOME_PAGE = `/${(pages as PageMetaDatum[]).find(page => page.type === 'home')?.path || (pages as PageMetaDatum[])[0].path}`
+
+/**
+ * @desc 使用async await 进项进行延时操作
+ * @param {*} time
+ */
+export function sleep(time = 500) {
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(true), time)
+  })
+}

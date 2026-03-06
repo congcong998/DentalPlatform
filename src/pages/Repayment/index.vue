@@ -6,12 +6,7 @@
       </view>
       <view class="form-item">
         <text class="form-label">贷款类型</text>
-        <picker
-          mode="selector"
-          :range="loanTypeOptions"
-          :value="loanTypeIndex"
-          @change="onLoanTypeChange"
-        >
+        <picker mode="selector" :range="loanTypeOptions" :value="loanTypeIndex" @change="onLoanTypeChange">
           <view class="form-input picker-input">
             {{ loanTypeIndex !== -1 ? loanTypeOptions[loanTypeIndex] : '请选择贷款类型' }}
           </view>
@@ -28,12 +23,7 @@
       </view>
       <view class="form-item">
         <text class="form-label">还款周期</text>
-        <picker
-          mode="selector"
-          :range="cycleOptions"
-          :value="cycleIndex"
-          @change="onCycleChange"
-        >
+        <picker mode="selector" :range="cycleOptions" :value="cycleIndex" @change="onCycleChange">
           <view class="form-input picker-input">
             {{ cycleIndex !== -1 ? cycleOptions[cycleIndex] : '请选择还款周期' }}
           </view>
@@ -53,12 +43,7 @@
       </view>
       <view class="form-item">
         <text class="form-label">备注</text>
-        <input
-          v-model="remark"
-          class="form-input"
-          type="text"
-          placeholder="可填写备注"
-        >
+        <input v-model="remark" class="form-input" type="text" placeholder="可填写备注">
       </view>
       <view class="action-buttons">
         <button class="btn btn-cancel" @click="handleCancel">
@@ -193,6 +178,7 @@ function handleSubmit() {
   display: flex;
   justify-content: center;
 }
+
 .repayment-content {
   width: 100%;
   max-width: 680rpx;

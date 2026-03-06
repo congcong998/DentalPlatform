@@ -66,6 +66,9 @@ importers:
       '@dcloudio/uni-quickapp-webview':
         specifier: 3.0.0-4070620250821001
         version: 3.0.0-4070620250821001(postcss@8.5.6)(rollup@4.50.0)(vue@3.4.21(typescript@5.8.3))
+      '@uni-helper/uni-promises':
+        specifier: ^0.2.1
+        version: 0.2.1(typescript@5.8.3)(vue@3.4.21(typescript@5.8.3))
       abortcontroller-polyfill:
         specifier: ^1.7.8
         version: 1.7.8
@@ -2183,6 +2186,16 @@ packages:
 
   '@uni-helper/uni-env@0.1.8':
     resolution: {integrity: sha512-oZQisgM5sFarGrswKHJvS5S7xNMXLjcBcPTKp2gzLMon+chdHiKua1+Hlqe/NX79Re35W4A6/QHDrw9cZ5AVGQ==}
+
+  '@uni-helper/uni-promises@0.2.1':
+    resolution: {integrity: sha512-hF0AxmGOTXFGHYRVGIYzrl/pbed6OJ371ysIRxaNaZMXk3Hsl5DfGcDthsA7eWI1HZexzTpOEWy+uuziplzTUQ==}
+    engines: {node: '>=14.18'}
+    peerDependencies:
+      typescript: ^4.8.0 || ^5.0.0
+      vue: ^3.2.0
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   '@uni-helper/uni-types@1.0.0-alpha.6':
     resolution: {integrity: sha512-lGSm3RUOQThyYIUuJI46b8ug3nGZMyRfMQ/ktOGNxOXBukGA1TF1TN2m4MjKUklIQ+kiIuIgZJoU3S7oIK5emw==}
@@ -9171,6 +9184,13 @@ snapshots:
   '@uni-helper/uni-env@0.1.8':
     dependencies:
       std-env: 3.9.0
+
+  '@uni-helper/uni-promises@0.2.1(typescript@5.8.3)(vue@3.4.21(typescript@5.8.3))':
+    dependencies:
+      '@dcloudio/types': 3.4.19
+      vue: 3.4.21(typescript@5.8.3)
+    optionalDependencies:
+      typescript: 5.8.3
 
   '@uni-helper/uni-types@1.0.0-alpha.6(@uni-helper/uni-app-types@1.0.0-alpha.6(typescript@5.8.3)(vue@3.4.21(typescript@5.8.3)))(@uni-helper/uni-cloud-types@1.0.0-alpha.6(typescript@5.8.3)(vue@3.4.21(typescript@5.8.3)))(@uni-helper/uni-ui-types@1.0.0-alpha.6(@uni-helper/uni-app-types@1.0.0-alpha.6(typescript@5.8.3)(vue@3.4.21(typescript@5.8.3)))(typescript@5.8.3)(vue@3.4.21(typescript@5.8.3)))(typescript@5.8.3)(vue@3.4.21(typescript@5.8.3))':
     dependencies:

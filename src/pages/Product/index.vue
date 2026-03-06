@@ -455,6 +455,7 @@ function handleConfirm() {
           box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.1);
         }
       }
+
       &.selected .select-indicator-abs {
         border-color: #1890ff;
         box-shadow: 0 4rpx 16rpx rgba(24, 144, 255, 0.16);

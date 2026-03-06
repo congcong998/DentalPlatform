@@ -22,7 +22,7 @@ const pages = {
       },
     },
     {
-      path: 'pages/me/me',
+      path: 'pages/user/user',
       type: 'page',
       style: {
         navigationBarTitleText: '我的',
