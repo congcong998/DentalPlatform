@@ -3,6 +3,7 @@ import { showToast } from '@uni-helper/uni-promises'
 import { onMounted, ref } from 'vue'
 import { appDescription, appName } from '@/settings/index'
 import { useTokenStore } from '@/store'
+import { getWxCode, wxBindPhoneLogin } from '@/api/login'
 import { sleep } from '@/utils'
 
 defineOptions({
@@ -14,6 +15,7 @@ const tokenStore = useTokenStore()
 const statusBarHeight = ref(44)
 const agreed = ref(false)
 const isLoading = ref(false)
+const isDev = ref(import.meta.env.DEV) // 仅开发环境显示
 
 definePage({
   style: {
@@ -28,50 +30,61 @@ onMounted(() => {
   statusBarHeight.value = sysInfo.statusBarHeight || 44
 })
 
-async function onLoginClick() {
+async function onLoginClick(e) {
   if (!agreed.value) {
-    await showToast({
-      title: '请先同意服务协议',
-      icon: 'none',
-    })
+    e.stopPropagation()
+    e.preventDefault()
+
+    await showToast({ title: '请先同意服务协议', icon: 'none' })
+    return false
   }
 }
 
-async function onGetPhoneNumber(e: any) {
-  const { code: phoneCode, errMsg } = e.detail
-
-  if (errMsg && errMsg.includes('fail')) {
-    await showToast({
-      title: '需要授权手机号才能登录',
-      icon: 'none',
-    })
+async function onGetPhoneNumber(e) {
+  if (!agreed.value) {
+    await showToast({ title: '请先同意服务协议', icon: 'none' })
     return
   }
 
-  if (!phoneCode) {
-    await showToast({
-      title: '获取手机号失败，请重试',
-      icon: 'none',
-    })
-    return
+  console.log('获取手机号事件: ', e.detail)
+  // getRealtimePhoneNumber 回调字段为 code，getPhoneNumber 旧版为 phoneCode/code
+  const phoneCode = e.detail.code || e.detail.phoneCode
+  const errMsg = e.detail.errMsg || ''
+
+  if (phoneCode && !errMsg.includes('fail')) {
+    try {
+      isLoading.value = true
+
+      // 先获取微信登录凭证 code
+      const wxCode = await getWxCode()
+
+      // 微信认证登录授权后绑定手机号
+      const res = await wxBindPhoneLogin(wxCode, phoneCode)
+
+      if (res.success) {
+        // 存储 token
+        const token = res.result?.token || res.result
+        tokenStore.token = token
+        // 同时直接写入本地存储，确保路由守卫能读取到
+        uni.setStorageSync('token', token)
+
+        await sleep(500)
+        uni.switchTab({ url: '/pages/index/index' })
+      }
+      else {
+        await showToast({ title: res.message || '登录失败，请重试', icon: 'none' })
+      }
+    }
+    catch (error) {
+      console.error('登录失败:', error)
+      await showToast({ title: '登录失败，请重试', icon: 'error' })
+    }
+    finally {
+      isLoading.value = false
+    }
   }
-
-  try {
-    isLoading.value = true
-
-    await tokenStore.wxLogin(phoneCode)
-
-    await sleep(500)
-
-    uni.switchTab({
-      url: '/pages/index/index',
-    })
-  }
-  catch (error) {
-    console.error('登录失败:', error)
-  }
-  finally {
-    isLoading.value = false
+  else {
+    await showToast({ title: '需要授权手机号才能登录', icon: 'none' })
   }
 }
 
@@ -83,6 +96,20 @@ function onAgreementClick() {
   uni.navigateTo({
     url: '/pages/agreement/index',
   })
+}
+
+// 调试模式：直接跳过登录
+async function onDevSkipLogin() {
+  try {
+    isLoading.value = true
+    tokenStore.token = 'dev-token'
+    uni.setStorageSync('token', 'dev-token')
+    await sleep(300)
+    uni.switchTab({ url: '/pages/index/index' })
+  }
+  finally {
+    isLoading.value = false
+  }
 }
 </script>
 
@@ -134,12 +161,23 @@ function onAgreementClick() {
               padding: 0,
             }"
             :disabled="isLoading"
-            open-type="getPhoneNumber"
-            @getphonenumber="onGetPhoneNumber"
+            open-type="getRealtimePhoneNumber"
+            @getrealtimephonenumber="onGetPhoneNumber"
           >
             <view v-if="isLoading" class="mr-2 h-5 w-5 animate-spin border-2 border-white border-t-transparent rounded-full" />
             <text class="text-base text-white font-semibold">{{ isLoading ? '登录中...' : '微信授权登录' }}</text>
           </button>
+
+          <!-- 调试模式快速登录（仅开发环境） -->
+          <view v-if="isDev && agreed" class="mt-3">
+            <button
+              class="h-10 w-full flex items-center justify-center rounded-full border-none"
+              :style="{ background: '#f3f4f6', color: '#6b7280' }"
+              @click="onDevSkipLogin"
+            >
+              <text class="text-sm">🛠 调试：跳过登录</text>
+            </button>
+          </view>
 
           <!-- 未同意协议时显示的按钮 -->
           <view

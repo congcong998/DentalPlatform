@@ -193,8 +193,7 @@ defineOptions({
 
 definePage({
   style: {
-    navigationStyle: 'custom',
-    navigationBarTitleText: '办理流程',
+    navigationBarTitleText: '签约流程',
   },
 })
 

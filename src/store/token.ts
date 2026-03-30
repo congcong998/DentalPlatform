@@ -8,7 +8,12 @@ import {
   login as _login,
   logout as _logout,
   refreshToken as _refreshToken,
+<<<<<<< HEAD
   wxBindLogin as _wxBindLogin,
+=======
+  wxBindPhoneLogin as _wxBindPhoneLogin,
+  wxLogin as _wxLogin,
+>>>>>>> 23b120a2e07fb3a62ee068156a1ec3013b498a05
   getWxCode,
 } from '@/api/login'
 import { isDoubleTokenRes, isSingleTokenRes } from '@/api/types/login'
@@ -158,6 +163,31 @@ export const useTokenStore = defineStore(
     }
 
     /**
+     * 微信认证登录授权后绑定手机号
+     * @param phoneCode 微信手机号授权码
+     */
+    const wxBindPhoneLogin = async (phoneCode: string) => {
+      try {
+        const code = await getWxCode()
+        const res = await _wxBindPhoneLogin(code, phoneCode)
+        await _postLogin(res)
+        uni.showToast({
+          title: '登录成功',
+          icon: 'success',
+        })
+        return res
+      }
+      catch (error) {
+        console.error('微信绑定手机号登录失败:', error)
+        uni.showToast({
+          title: '登录失败，请重试',
+          icon: 'error',
+        })
+        throw error
+      }
+    }
+
+    /**
      * 退出登录 并 删除用户信息
      */
     const logout = async () => {
@@ -273,6 +303,7 @@ export const useTokenStore = defineStore(
       // 核心API方法
       login,
       wxLogin,
+      wxBindPhoneLogin,
       logout,
 
       // 认证状态判断（最常用的）

@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue'
 import { useUserStore } from '@/store/user'
+import { getRepaymentPlanList, type IRepaymentPlan } from '@/api/repayment'
 
 defineOptions({
   name: 'Home',
@@ -17,39 +18,79 @@ definePage({
 const userStore = useUserStore()
 const statusBarHeight = ref(44)
 const isLogin = computed(() => !!userStore.userInfo?.userId)
-
-// 贷款信息
-const loanInfo = ref({
-  totalAmount: 50000, // 总贷款金额
-  remainingAmount: 35000, // 剩余还款金额
-  monthlyPayment: 2500, // 月供
-  interestRate: 4.5, // 年利率
-  loanTerm: 24, // 贷款期限（月）
-  paidMonths: 6, // 已还期数
-})
+const isLoading = ref(false)
 
 // 还款计划列表
-const repaymentPlan = ref([
-  { period: 1, date: '2024-01-15', principal: 2292, interest: 208, total: 2500, status: 'paid' },
-  { period: 2, date: '2024-02-15', principal: 2301, interest: 199, total: 2500, status: 'paid' },
-  { period: 3, date: '2024-03-15', principal: 2310, interest: 190, total: 2500, status: 'paid' },
-  { period: 4, date: '2024-04-15', principal: 2319, interest: 181, total: 2500, status: 'paid' },
-  { period: 5, date: '2024-05-15', principal: 2328, interest: 172, total: 2500, status: 'paid' },
-  { period: 6, date: '2024-06-15', principal: 2337, interest: 163, total: 2500, status: 'paid' },
-  { period: 7, date: '2024-07-15', principal: 2346, interest: 154, total: 2500, status: 'pending' },
-  { period: 8, date: '2024-08-15', principal: 2355, interest: 145, total: 2500, status: 'unpaid' },
-  { period: 9, date: '2024-09-15', principal: 2364, interest: 136, total: 2500, status: 'unpaid' },
-  { period: 10, date: '2024-10-15', principal: 2373, interest: 127, total: 2500, status: 'unpaid' },
-])
+const repaymentPlan = ref<IRepaymentPlan[]>([])
 
-// 计算进度百分比
+// 统计信息
+const totalAmount = computed(() =>
+  repaymentPlan.value.reduce((sum, item) => sum + (item.planAmount || 0), 0),
+)
+const paidAmount = computed(() =>
+  repaymentPlan.value
+    .filter(item => item.repaymentStatus === '1')
+    .reduce((sum, item) => sum + (item.actualAmount || item.planAmount || 0), 0),
+)
+const remainingAmount = computed(() => totalAmount.value - paidAmount.value)
+const paidCount = computed(() =>
+  repaymentPlan.value.filter(item => item.repaymentStatus === '1').length,
+)
 const progress = computed(() => {
-  return ((loanInfo.value.totalAmount - loanInfo.value.remainingAmount) / loanInfo.value.totalAmount * 100).toFixed(1)
+  if (!totalAmount.value)
+    return '0.0'
+  return (paidAmount.value / totalAmount.value * 100).toFixed(1)
 })
+
+// 状态映射
+function getStatusText(status: string) {
+  const map: Record<string, string> = {
+    '0': '未还款',
+    '1': '已还款',
+    '2': '部分还款',
+    '3': '逾期',
+  }
+  return map[status] || ''
+}
+
+function getStatusColor(status: string) {
+  const map: Record<string, string> = {
+    '0': 'text-gray-400',
+    '1': 'text-green-500',
+    '2': 'text-orange-500',
+    '3': 'text-red-500',
+  }
+  return map[status] || ''
+}
+
+// 格式化日期
+function formatDate(dateStr: string) {
+  if (!dateStr)
+    return '-'
+  return dateStr.split('T')[0]
+}
+
+async function loadRepaymentPlan() {
+  try {
+    isLoading.value = true
+    const res = await getRepaymentPlanList()
+    if (res?.records) {
+      repaymentPlan.value = res.records.sort((a, b) => a.seqNo - b.seqNo)
+    }
+  }
+  catch (error) {
+    console.error('获取还款计划失败:', error)
+    uni.showToast({ title: '获取数据失败', icon: 'none' })
+  }
+  finally {
+    isLoading.value = false
+  }
+}
 
 onMounted(() => {
   const sysInfo = uni.getSystemInfoSync()
   statusBarHeight.value = sysInfo.statusBarHeight || 44
+  loadRepaymentPlan()
 })
 
 function handleRepay() {
@@ -58,32 +99,13 @@ function handleRepay() {
     uni.navigateTo({ url: '/pages/login/index' })
     return
   }
-
   uni.navigateTo({ url: '/pages/repayment/index' })
 }
 
-function handleDetail(item: any) {
+function handleDetail(item: IRepaymentPlan) {
   uni.navigateTo({
-    url: `/pages/repayment/detail?period=${item.period}`,
+    url: `/pages/repayment/detail?id=${item.id}`,
   })
-}
-
-function getStatusText(status: string) {
-  const map: Record<string, string> = {
-    paid: '已还款',
-    pending: '待还款',
-    unpaid: '未到期',
-  }
-  return map[status] || ''
-}
-
-function getStatusColor(status: string) {
-  const map: Record<string, string> = {
-    paid: 'text-green-500',
-    pending: 'text-orange-500',
-    unpaid: 'text-gray-400',
-  }
-  return map[status] || ''
 }
 </script>
 
@@ -102,7 +124,7 @@ function getStatusColor(status: string) {
       <view class="mb-4">
         <text class="text-sm text-white/80">剩余还款金额</text>
         <view class="mt-1 flex items-baseline">
-          <text class="text-3xl text-white font-bold">{{ (loanInfo.remainingAmount / 10000).toFixed(2) }}</text>
+          <text class="text-3xl text-white font-bold">{{ (remainingAmount / 10000).toFixed(2) }}</text>
           <text class="ml-1 text-base text-white/80">万元</text>
         </view>
       </view>
@@ -114,26 +136,23 @@ function getStatusColor(status: string) {
           <text class="text-xs text-white/80">{{ progress }}%</text>
         </view>
         <view class="h-2 overflow-hidden rounded-full bg-white/20">
-          <view
-            class="h-full rounded-full bg-white"
-            :style="{ width: `${progress}%` }"
-          />
+          <view class="h-full rounded-full bg-white" :style="{ width: `${progress}%` }" />
         </view>
       </view>
 
       <!-- 贷款信息 -->
       <view class="flex justify-between">
         <view class="flex-1">
-          <text class="text-xs text-white/70">月供金额</text>
-          <text class="mt-1 block text-base text-white font-medium">¥{{ loanInfo.monthlyPayment }}</text>
+          <text class="text-xs text-white/70">总金额</text>
+          <text class="mt-1 block text-base text-white font-medium">¥{{ totalAmount.toFixed(2) }}</text>
         </view>
         <view class="flex-1">
           <text class="text-xs text-white/70">已还期数</text>
-          <text class="mt-1 block text-base text-white font-medium">{{ loanInfo.paidMonths }}/{{ loanInfo.loanTerm }}</text>
+          <text class="mt-1 block text-base text-white font-medium">{{ paidCount }}/{{ repaymentPlan.length }}</text>
         </view>
         <view class="flex-1">
-          <text class="text-xs text-white/70">年利率</text>
-          <text class="mt-1 block text-base text-white font-medium">{{ loanInfo.interestRate }}%</text>
+          <text class="text-xs text-white/70">已还金额</text>
+          <text class="mt-1 block text-base text-white font-medium">¥{{ paidAmount.toFixed(2) }}</text>
         </view>
       </view>
     </view>
@@ -153,13 +172,23 @@ function getStatusColor(status: string) {
     <view class="mx-4 mb-4 mt-4">
       <view class="mb-3 flex items-center justify-between">
         <text class="text-base text-gray-800 font-medium">还款计划明细</text>
-        <text class="text-xs text-gray-400">共 {{ loanInfo.loanTerm }} 期</text>
+        <text class="text-xs text-gray-400">共 {{ repaymentPlan.length }} 期</text>
       </view>
 
-      <view class="overflow-hidden rounded-xl bg-white shadow-sm">
+      <!-- 加载中 -->
+      <view v-if="isLoading" class="flex items-center justify-center py-10">
+        <text class="text-sm text-gray-400">加载中...</text>
+      </view>
+
+      <!-- 空数据 -->
+      <view v-else-if="repaymentPlan.length === 0" class="flex items-center justify-center py-10">
+        <text class="text-sm text-gray-400">暂无还款计划</text>
+      </view>
+
+      <view v-else class="overflow-hidden rounded-xl bg-white shadow-sm">
         <view
           v-for="(item, index) in repaymentPlan"
-          :key="item.period"
+          :key="item.id"
           class="border-b border-gray-100 px-4 py-3 active:bg-gray-50"
           :class="{ 'border-b-0': index === repaymentPlan.length - 1 }"
           @click="handleDetail(item)"
@@ -167,18 +196,18 @@ function getStatusColor(status: string) {
           <view class="flex items-center justify-between">
             <view class="flex-1">
               <view class="flex items-center">
-                <text class="text-base text-gray-800 font-medium">第 {{ item.period }} 期</text>
-                <text class="ml-2 text-xs" :class="[getStatusColor(item.status)]">
-                  {{ getStatusText(item.status) }}
+                <text class="text-base text-gray-800 font-medium">第 {{ item.seqNo }} 期</text>
+                <text class="ml-2 text-xs" :class="getStatusColor(item.repaymentStatus)">
+                  {{ getStatusText(item.repaymentStatus) }}
                 </text>
               </view>
-              <text class="mt-1 block text-xs text-gray-400">{{ item.date }}</text>
+              <text class="mt-1 block text-xs text-gray-400">计划日期：{{ formatDate(item.planDate) }}</text>
+              <text v-if="item.actualDate" class="block text-xs text-gray-400">实还日期：{{ formatDate(item.actualDate) }}</text>
             </view>
             <view class="text-right">
-              <text class="text-base text-gray-800 font-medium">¥{{ item.total }}</text>
-              <view class="mt-1 flex items-center text-xs text-gray-400">
-                <text>本金¥{{ item.principal }}</text>
-                <text class="ml-2">利息¥{{ item.interest }}</text>
+              <text class="text-base text-gray-800 font-medium">¥{{ item.planAmount?.toFixed(2) }}</text>
+              <view v-if="item.actualAmount" class="mt-1 text-xs text-green-500">
+                <text>实还 ¥{{ item.actualAmount?.toFixed(2) }}</text>
               </view>
             </view>
           </view>
