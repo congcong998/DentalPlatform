@@ -66,10 +66,16 @@ export function updateUserPassword(data: IUpdatePassword) {
  * @returns Promise 包含微信登录凭证(code)
  */
 export function getWxCode() {
-  return new Promise<UniApp.LoginRes>((resolve, reject) => {
+  return new Promise<string>((resolve, reject) => {
     uni.login({
       provider: 'weixin',
-      success: res => resolve(res),
+      success: (res) => {
+        if (!res.code) {
+          reject(new Error('获取微信登录凭证失败'))
+          return
+        }
+        resolve(res.code)
+      },
       fail: err => reject(new Error(err)),
     })
   })
@@ -82,4 +88,20 @@ export function getWxCode() {
  */
 export function wxLogin(data: { code: string }) {
   return http.post<IAuthLoginRes>('/auth/wxLogin', data)
+}
+
+/**
+ * 微信认证登录后绑定手机号（小程序）
+ * @param code 微信登录凭证
+ * @param phoneCode 微信手机号授权凭证
+ */
+export function wxBindPhoneLogin(code: string, phoneCode: string) {
+  return http.post<IAuthLoginRes>(
+    `/dental-finance/customer/customerInfo/bind/wx/${code}/${phoneCode}`,
+    undefined,
+    undefined,
+    {
+      'content-type': 'application/x-www-form-urlencoded',
+    },
+  )
 }

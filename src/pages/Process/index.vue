@@ -197,13 +197,6 @@ definePage({
   },
 })
 
-definePage({
-  style: {
-    navigationStyle: 'custom',
-    navigationBarTitleText: '办理流程',
-  },
-})
-
 const statusBarHeight = ref(44)
 const currentStep = ref(1)
 
