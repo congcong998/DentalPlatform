@@ -76,10 +76,31 @@ export function getWxCode() {
 }
 
 /**
- * 微信登录
+ * 微信登录（旧版，保留兼容）
  * @param params 微信登录参数，包含code
  * @returns Promise 包含登录结果
  */
 export function wxLogin(data: { code: string }) {
   return http.post<IAuthLoginRes>('/auth/wxLogin', data)
+}
+
+/**
+ * 后端登录接口返回结构
+ */
+export interface IWxBindResult {
+  success: boolean
+  message: string
+  code: number
+  result: Record<string, any>
+  timestamp: number
+}
+
+/**
+ * 微信手机号绑定登录
+ * @param code 微信 uni.login 返回的 code
+ * @param phoneCode getPhoneNumber 返回的手机号 code
+ * @returns Promise 包含登录结果
+ */
+export function wxBindLogin(code: string, phoneCode: string) {
+  return http.post<IWxBindResult>(`/dental-finance/customer/customerInfo/bind/wx/${encodeURIComponent(code)}/${encodeURIComponent(phoneCode)}`)
 }

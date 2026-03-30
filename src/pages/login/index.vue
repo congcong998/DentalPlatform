@@ -1,15 +1,15 @@
-<script setup>
+<script setup lang="ts">
 import { showToast } from '@uni-helper/uni-promises'
 import { onMounted, ref } from 'vue'
 import { appDescription, appName } from '@/settings/index'
-import { useUserStore } from '@/store/user'
+import { useTokenStore } from '@/store'
 import { sleep } from '@/utils'
 
 defineOptions({
   name: 'Login',
 })
 
-const userStore = useUserStore()
+const tokenStore = useTokenStore()
 
 const statusBarHeight = ref(44)
 const agreed = ref(false)
@@ -28,83 +28,50 @@ onMounted(() => {
   statusBarHeight.value = sysInfo.statusBarHeight || 44
 })
 
-async function onLoginClick(e) {
-  // 阻止默认行为
+async function onLoginClick() {
   if (!agreed.value) {
-    // 阻止授权弹窗
-    e.stopPropagation()
-    e.preventDefault()
-
     await showToast({
       title: '请先同意服务协议',
       icon: 'none',
     })
-    return false
   }
-
-  return true
 }
 
-async function onGetUserInfo(e) {
-  // 先检查是否同意协议
-  if (!agreed.value) {
+async function onGetPhoneNumber(e: any) {
+  const { code: phoneCode, errMsg } = e.detail
+
+  if (errMsg && errMsg.includes('fail')) {
     await showToast({
-      title: '请先同意服务协议',
+      title: '需要授权手机号才能登录',
       icon: 'none',
     })
     return
   }
 
-  const { userInfo, errMsg } = e.detail
-
-  if (errMsg.includes('ok') && userInfo) {
-    try {
-      isLoading.value = true
-
-      // 1. 获取登录凭证
-      const { code } = await uni.login({ provider: 'weixin' })
-
-      // TODO: 调用后端接口，传递 code 和 userInfo 进行登录验证
-      // const res = await api.login({ code, userInfo })
-
-      // 模拟登录成功，保存用户信息
-      const mockUserInfo = {
-        userId: 1,
-        username: userInfo.nickName,
-        nickname: userInfo.nickName,
-        avatar: userInfo.avatarUrl,
-      }
-
-      userStore.setUserInfo(mockUserInfo)
-      uni.setStorageSync('token', `mock_token_${Date.now()}`)
-
-      await showToast({
-        title: '登录成功',
-        icon: 'success',
-      })
-
-      await sleep(500)
-
-      uni.switchTab({
-        url: '/pages/index/index',
-      })
-    }
-    catch (error) {
-      console.error('登录失败:', error)
-      await showToast({
-        title: '登录失败，请重试',
-        icon: 'error',
-      })
-    }
-    finally {
-      isLoading.value = false
-    }
-  }
-  else if (errMsg.includes('fail')) {
+  if (!phoneCode) {
     await showToast({
-      title: '需要授权才能登录',
+      title: '获取手机号失败，请重试',
       icon: 'none',
     })
+    return
+  }
+
+  try {
+    isLoading.value = true
+
+    await tokenStore.wxLogin(phoneCode)
+
+    await sleep(500)
+
+    uni.switchTab({
+      url: '/pages/index/index',
+    })
+  }
+  catch (error) {
+    console.error('登录失败:', error)
+  }
+  finally {
+    isLoading.value = false
   }
 }
 
@@ -167,8 +134,8 @@ function onAgreementClick() {
               padding: 0,
             }"
             :disabled="isLoading"
-            open-type="getUserInfo"
-            @getuserinfo="onGetUserInfo"
+            open-type="getPhoneNumber"
+            @getphonenumber="onGetPhoneNumber"
           >
             <view v-if="isLoading" class="mr-2 h-5 w-5 animate-spin border-2 border-white border-t-transparent rounded-full" />
             <text class="text-base text-white font-semibold">{{ isLoading ? '登录中...' : '微信授权登录' }}</text>

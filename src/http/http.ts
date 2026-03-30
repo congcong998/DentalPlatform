@@ -101,7 +101,8 @@ export function http<T>(options: CustomRequestOptions) {
               title: responseData.msg || responseData.message || '请求错误',
             })
           }
-          return resolve(responseData.data)
+          // 兼容后端响应字段为 result 的情况（如 /dental-finance 系列接口）
+          return resolve(responseData.data ?? responseData.result)
         }
 
         // 处理其他错误

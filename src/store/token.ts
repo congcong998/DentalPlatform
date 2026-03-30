@@ -8,7 +8,7 @@ import {
   login as _login,
   logout as _logout,
   refreshToken as _refreshToken,
-  wxLogin as _wxLogin,
+  wxBindLogin as _wxBindLogin,
   getWxCode,
 } from '@/api/login'
 import { isDoubleTokenRes, isSingleTokenRes } from '@/api/types/login'
@@ -123,19 +123,24 @@ export const useTokenStore = defineStore(
     }
 
     /**
-     * 微信登录
-     * 有的时候后端会用一个接口返回token和用户信息，有的时候会分开2个接口，一个获取token，一个获取用户信息
-     * （各有利弊，看业务场景和系统复杂度），这里使用2个接口返回的来模拟
+     * 微信手机号登录
+     * 调用后端 /dental-finance/customer/customerInfo/bind/wx/{code}/{phoneCode} 接口
+     * @param phoneCode getPhoneNumber 事件返回的手机号 code
      * @returns 登录结果
      */
-    const wxLogin = async () => {
+    const wxLogin = async (phoneCode: string) => {
       try {
         // 获取微信小程序登录的code
-        const code = await getWxCode()
-        console.log('微信登录-code: ', code)
-        const res = await _wxLogin(code)
+        const loginRes = await getWxCode()
+        if (!loginRes.code) {
+          throw new Error('获取微信登录code失败')
+        }
+        console.log('微信登录-code: ', loginRes.code)
+        const res = await _wxBindLogin(loginRes.code, phoneCode)
         console.log('微信登录-res: ', res)
-        await _postLogin(res)
+        if (res) {
+          await _postLogin(res as any)
+        }
         uni.showToast({
           title: '登录成功',
           icon: 'success',
@@ -146,7 +151,7 @@ export const useTokenStore = defineStore(
         console.error('微信登录失败:', error)
         uni.showToast({
           title: '微信登录失败，请重试',
-          icon: 'error',
+          icon: 'none',
         })
         throw error
       }
