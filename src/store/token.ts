@@ -8,12 +8,8 @@ import {
   login as _login,
   logout as _logout,
   refreshToken as _refreshToken,
-<<<<<<< HEAD
-  wxBindLogin as _wxBindLogin,
-=======
   wxBindPhoneLogin as _wxBindPhoneLogin,
   wxLogin as _wxLogin,
->>>>>>> 23b120a2e07fb3a62ee068156a1ec3013b498a05
   getWxCode,
 } from '@/api/login'
 import { isDoubleTokenRes, isSingleTokenRes } from '@/api/types/login'
