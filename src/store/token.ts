@@ -38,17 +38,22 @@ export const useTokenStore = defineStore(
     const setTokenInfo = (val: IAuthLoginRes) => {
       tokenInfo.value = val
 
-      // 计算并存储过期时间
+      const storageToken = isSingleTokenRes(val) ? val.token : val.accessToken
+      if (storageToken) {
+        uni.setStorageSync('token', storageToken)
+      }
+
+      // 计算并存储过期时间（后端不返回 expiresIn 时默认 7200 秒，防止写入 NaN 导致永远过期）
       const now = Date.now()
       if (isSingleTokenRes(val)) {
         // 单token模式
-        const expireTime = now + val.expiresIn * 1000
+        const expireTime = now + (val.expiresIn || 7200) * 1000
         uni.setStorageSync('accessTokenExpireTime', expireTime)
       }
       else if (isDoubleTokenRes(val)) {
         // 双token模式
-        const accessExpireTime = now + val.accessExpiresIn * 1000
-        const refreshExpireTime = now + val.refreshExpiresIn * 1000
+        const accessExpireTime = now + (val.accessExpiresIn || 7200) * 1000
+        const refreshExpireTime = now + (val.refreshExpiresIn || 7 * 24 * 3600) * 1000
         uni.setStorageSync('accessTokenExpireTime', accessExpireTime)
         uni.setStorageSync('refreshTokenExpireTime', refreshExpireTime)
       }
@@ -58,15 +63,21 @@ export const useTokenStore = defineStore(
      * 判断token是否过期
      */
     const isTokenExpired = computed(() => {
-      if (!tokenInfo.value) {
-        return true
-      }
+      // 先判断内存里是否有 token
+      const hasToken = isSingleTokenRes(tokenInfo.value)
+        ? !!tokenInfo.value.token
+        : isDoubleTokenRes(tokenInfo.value)
+          ? !!tokenInfo.value.accessToken
+          : false
+
+      if (!hasToken) return true
 
       const now = Date.now()
       const expireTime = uni.getStorageSync('accessTokenExpireTime')
 
-      if (!expireTime)
-        return true
+      // 过期时间缺失或为 NaN 时：有 token 就当未过期，让服务端来拒绝
+      if (!expireTime || Number.isNaN(Number(expireTime))) return false
+
       return now >= expireTime
     })
 
@@ -131,16 +142,12 @@ export const useTokenStore = defineStore(
      */
     const wxLogin = async (phoneCode: string) => {
       try {
-        // 获取微信小程序登录的code
-        const loginRes = await getWxCode()
-        if (!loginRes.code) {
-          throw new Error('获取微信登录code失败')
-        }
-        console.log('微信登录-code: ', loginRes.code)
-        const res = await _wxBindLogin(loginRes.code, phoneCode)
+        const code = await getWxCode()
+        console.log('微信登录-code: ', code)
+        const res = await _wxLogin({ code })
         console.log('微信登录-res: ', res)
         if (res) {
-          await _postLogin(res as any)
+          await _postLogin(res)
         }
         uni.showToast({
           title: '登录成功',

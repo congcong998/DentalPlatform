@@ -8,7 +8,9 @@ defineOptions({
 })
 
 definePage({
+  // #ifndef H5
   type: 'home',
+  // #endif
   style: {
     navigationStyle: 'custom',
     navigationBarTitleText: '还款计划',
@@ -96,7 +98,12 @@ onMounted(() => {
 function handleRepay() {
   if (!isLogin.value) {
     uni.showToast({ title: '请先登录', icon: 'none' })
+    // #ifdef H5
+    uni.navigateTo({ url: '/pages/login-h5/index' })
+    // #endif
+    // #ifndef H5
     uni.navigateTo({ url: '/pages/login/index' })
+    // #endif
     return
   }
   uni.navigateTo({ url: '/pages/repayment/index' })

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { showToast } from '@uni-helper/uni-promises'
 import { onMounted, ref } from 'vue'
+import { getWxCode, wxBindPhoneLogin } from '@/api/login'
+import { isDoubleTokenRes, isSingleTokenRes } from '@/api/types/login'
 import { appDescription, appName } from '@/settings/index'
 import { useTokenStore } from '@/store'
-import { getWxCode, wxBindPhoneLogin } from '@/api/login'
 import { sleep } from '@/utils'
 
 defineOptions({
@@ -17,6 +18,49 @@ const agreed = ref(false)
 const isLoading = ref(false)
 const isDev = ref(import.meta.env.DEV) // 仅开发环境显示
 
+function applyLoginToken(loginData: unknown) {
+  if (typeof loginData === 'string') {
+    tokenStore.setTokenInfo({ token: loginData, expiresIn: 7200 })
+    return true
+  }
+
+  if (!loginData || typeof loginData !== 'object') {
+    return false
+  }
+
+  const loginObject = loginData as Record<string, unknown>
+
+  if (isSingleTokenRes(loginObject as any)) {
+    tokenStore.setTokenInfo(loginObject as any)
+    return true
+  }
+
+  if (isDoubleTokenRes(loginObject as any)) {
+    tokenStore.setTokenInfo(loginObject as any)
+    return true
+  }
+
+  if (typeof loginObject.token === 'string') {
+    tokenStore.setTokenInfo({
+      token: loginObject.token,
+      expiresIn: Number(loginObject.expiresIn) || 7200,
+    })
+    return true
+  }
+
+  if (typeof loginObject.accessToken === 'string' && typeof loginObject.refreshToken === 'string') {
+    tokenStore.setTokenInfo({
+      accessToken: loginObject.accessToken,
+      refreshToken: loginObject.refreshToken,
+      accessExpiresIn: Number(loginObject.accessExpiresIn) || 7200,
+      refreshExpiresIn: Number(loginObject.refreshExpiresIn) || 7 * 24 * 3600,
+    })
+    return true
+  }
+
+  return false
+}
+
 definePage({
   style: {
     navigationStyle: 'custom',
@@ -26,6 +70,11 @@ definePage({
 })
 
 onMounted(() => {
+  // #ifdef H5
+  uni.reLaunch({ url: '/pages/login-h5/index' })
+  return
+  // #endif
+
   const sysInfo = uni.getSystemInfoSync()
   statusBarHeight.value = sysInfo.statusBarHeight || 44
 })
@@ -55,24 +104,15 @@ async function onGetPhoneNumber(e) {
     try {
       isLoading.value = true
 
-      // 先获取微信登录凭证 code
       const wxCode = await getWxCode()
-
-      // 微信认证登录授权后绑定手机号
       const res = await wxBindPhoneLogin(wxCode, phoneCode)
-
-      if (res.success) {
-        // 存储 token
-        const token = res.result?.token || res.result
-        tokenStore.token = token
-        // 同时直接写入本地存储，确保路由守卫能读取到
-        uni.setStorageSync('token', token)
-
+      if (applyLoginToken(res)) {
         await sleep(500)
+        console.log('登录成功，跳转首页')
         uni.switchTab({ url: '/pages/index/index' })
       }
       else {
-        await showToast({ title: res.message || '登录失败，请重试', icon: 'none' })
+        await showToast({ title: '登录返回数据异常，请重试', icon: 'none' })
       }
     }
     catch (error) {
@@ -102,8 +142,7 @@ function onAgreementClick() {
 async function onDevSkipLogin() {
   try {
     isLoading.value = true
-    tokenStore.token = 'dev-token'
-    uni.setStorageSync('token', 'dev-token')
+    tokenStore.setTokenInfo({ token: 'dev-token', expiresIn: 7200 })
     await sleep(300)
     uni.switchTab({ url: '/pages/index/index' })
   }
@@ -161,8 +200,8 @@ async function onDevSkipLogin() {
               padding: 0,
             }"
             :disabled="isLoading"
-            open-type="getRealtimePhoneNumber"
-            @getrealtimephonenumber="onGetPhoneNumber"
+            open-type="getPhoneNumber"
+            @getphonenumber="onGetPhoneNumber"
           >
             <view v-if="isLoading" class="mr-2 h-5 w-5 animate-spin border-2 border-white border-t-transparent rounded-full" />
             <text class="text-base text-white font-semibold">{{ isLoading ? '登录中...' : '微信授权登录' }}</text>
@@ -181,7 +220,7 @@ async function onDevSkipLogin() {
 
           <!-- 未同意协议时显示的按钮 -->
           <view
-            v-else
+            v-else-if="!agreed"
             class="h-13 w-full flex items-center justify-center rounded-full opacity-50 shadow-lg"
             :style="{
               background: 'linear-gradient(to right, #3b82f6, #2563eb)',

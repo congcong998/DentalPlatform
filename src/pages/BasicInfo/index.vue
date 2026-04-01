@@ -106,6 +106,9 @@ import { onMounted, ref } from 'vue'
 import areaData from './areaData' // 将省市区数据导入
 
 definePage({
+  // #ifdef H5
+  type: 'home',
+  // #endif
   style: {
     navigationBarTitleText: '基础信息',
   },
@@ -290,53 +293,31 @@ function handleSubmit() {
   const province = provinceIndex.value !== -1 ? provinceOptions.value[provinceIndex.value] : ''
   const city = cityIndex.value !== -1 ? cityOptions.value[cityIndex.value] : ''
   const district = districtIndex.value !== -1 ? districtOptions.value[districtIndex.value] : ''
-  const gender = genderIndex.value !== -1 ? genderOptions[genderIndex.value] : ''
+  const sex = genderIndex.value !== -1 ? genderIndex.value + 1 : undefined
 
-  const payload = {
+  const draft = {
     name: name.value.trim(),
-    sex: gender,
+    sex,
     age: age.value ? Number(age.value) : undefined,
     phone: phone.value.trim(),
     idCard: idCard.value.trim(),
-    idCardFrontFileUrl: idCardFrontFileUrl.value,
+    idCardFrontUrl: idCardFrontFileUrl.value,
     email: email.value.trim(),
     inviteCode: inviteCode.value.trim(),
-    // province,
-    // city,
-    // district,
-    // detailAddress: detailAddress.value.trim(),
+    province,
+    city,
+    district,
+    detailAddress: detailAddress.value.trim(),
     address: `${province}${city}${district}${detailAddress.value.trim()}`,
   }
 
-  uni.showLoading({ title: '提交中...' })
-  uni.request({
-    url: '/dental-finance/customer/customerInfo/add',
-    method: 'POST',
-    data: payload,
-    header: { 'Content-Type': 'application/json' },
-    success: (res: any) => {
-      const ok = res?.statusCode === 200 && (res?.data?.code === 200 || res?.data?.success === true || res?.data?.code === 0)
-      if (ok) {
-        uni.showToast({ title: '提交成功', icon: 'success' })
-        setTimeout(() => {
-          uni.redirectTo({
-            url: '/pages/Product/index',
-          })
-        }, 500)
-        return
-      }
-      uni.showToast({ title: res?.data?.message || '提交失败', icon: 'none' })
-      uni.redirectTo({
-        url: '/pages/Product/index',
-      })
-    },
-    fail: () => {
-      uni.showToast({ title: '网络异常，请稍后重试', icon: 'none' })
-    },
-    complete: () => {
-      uni.hideLoading()
-    },
-  })
+  uni.setStorageSync('customer-basic-draft', draft)
+  uni.showToast({ title: '已保存，继续下一步', icon: 'success' })
+  setTimeout(() => {
+    uni.redirectTo({
+      url: '/pages/Product/index',
+    })
+  }, 400)
 }
 </script>
 
