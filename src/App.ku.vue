@@ -13,7 +13,7 @@ onShow(() => {
   if (path === '/') {
     isCurrentPageTabbar.value = false // 登录页不显示 tabbar
   }
-  else if (path === '/pages/login/index') {
+  else if (path === '/pages/login/index' || path === '/pages/login-h5/index') {
     isCurrentPageTabbar.value = false // 登录页不显示 tabbar
   }
   else {

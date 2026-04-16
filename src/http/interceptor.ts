@@ -1,10 +1,30 @@
 import type { CustomRequestOptions } from '@/http/types'
 import { useTokenStore } from '@/store'
+import signMd5Utils from '@/utils/signMd5Utils.ts'
 import { getEnvBaseUrl } from '@/utils'
+import { appVersion } from '@/settings'
 import { stringifyQuery } from './tools/queryString'
 
 // 请求基准地址
 const baseUrl = getEnvBaseUrl()
+const LOGIN_API_PATH = '/dental-finance/sys/mLogin'
+const DEFAULT_TENANT_ID = '1'
+
+function isObjectLike(value: unknown): value is Record<string, any> {
+  return Object.prototype.toString.call(value) === '[object Object]'
+}
+
+function cloneForSign<T>(data: T): T {
+  if (!isObjectLike(data) && !Array.isArray(data)) {
+    return data
+  }
+  try {
+    return JSON.parse(JSON.stringify(data)) as T
+  }
+  catch {
+    return data
+  }
+}
 
 // 拦截器配置
 const httpInterceptor = {
@@ -55,6 +75,27 @@ const httpInterceptor = {
     if (token) {
       options.header.Authorization = `Bearer ${token}`
     }
+
+    const requestPath = options.url || ''
+    const isLoginApi = requestPath.includes(LOGIN_API_PATH)
+    if (!isLoginApi) {
+      const tenantId = uni.getStorageSync('tenantId') || DEFAULT_TENANT_ID
+      const timestamp = signMd5Utils.getTimestamp().toString()
+
+      // 签名参数使用克隆对象，避免签名工具内部转换类型时影响原始请求参数
+      const sign = signMd5Utils.getSign(
+        requestPath,
+        cloneForSign(options.query) || {},
+        cloneForSign(options.data) || {},
+      )
+
+      options.header['X-Access-Token'] = token || ''
+      options.header['X-Sign'] = sign
+      options.header['X-Tenant-Id'] = String(tenantId)
+      options.header['X-Timestamp'] = timestamp
+      options.header['X-Version'] = appVersion
+    }
+
     return options
   },
 }

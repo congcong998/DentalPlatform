@@ -48,6 +48,15 @@ onMounted(() => {
   statusBarHeight.value = sysInfo.statusBarHeight || 44
 })
 
+function getLoginPageUrl() {
+  // #ifdef H5
+  return '/pages/login-h5/index'
+  // #endif
+  // #ifndef H5
+  return '/pages/login/index'
+  // #endif
+}
+
 function handleLogin() {
   if (isLogin.value) {
     uni.navigateTo({
@@ -56,7 +65,7 @@ function handleLogin() {
     return
   }
   uni.navigateTo({
-    url: '/pages/login/index',
+    url: getLoginPageUrl(),
   })
 }
 
@@ -67,7 +76,7 @@ function handleMenuClick(item: any) {
     if (!isLogin.value) {
       uni.showToast({ title: '请先登录', icon: 'none' })
       uni.navigateTo({
-        url: '/pages/login/index',
+        url: getLoginPageUrl(),
       })
       return
     }
@@ -78,7 +87,7 @@ function handleMenuClick(item: any) {
   if (item.requireLogin !== false && !isLogin.value) {
     uni.showToast({ title: '请先登录', icon: 'none' })
     uni.navigateTo({
-      url: '/pages/login/index',
+      url: getLoginPageUrl(),
     })
     return
   }
@@ -150,7 +159,7 @@ function handleLogout() {
 
         setTimeout(() => {
           uni.reLaunch({
-            url: '/pages/login/index',
+            url: getLoginPageUrl(),
           })
         }, 1000)
       }

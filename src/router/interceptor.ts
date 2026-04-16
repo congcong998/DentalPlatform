@@ -11,6 +11,8 @@ export const FG_LOG_ENABLE = false
 // 白名单页面（不需要登录）
 const whiteList = [
   '/pages/login/index',
+  '/pages/login-h5/index',
+  '/pages/BasicInfo/index',
   '/pages/agreement/index',
   '/pages/about/index',
   '/pages/contact/index',
@@ -55,6 +57,11 @@ export const navigateToInterceptor = {
 
     // 处理直接进入路由非首页时，tabbarIndex 不正确的问题
     tabbarStore.setAutoCurIdx(path)
+
+    // #ifdef H5
+    // H5 不做登录拦截
+    return true
+    // #endif
 
     // 检查是否需要登录
     const token = uni.getStorageSync('token')

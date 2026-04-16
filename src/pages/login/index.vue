@@ -31,6 +31,11 @@ definePage({
 })
 
 onMounted(() => {
+  // #ifdef H5
+  uni.reLaunch({ url: '/pages/login-h5/index' })
+  return
+  // #endif
+
   const sysInfo = uni.getSystemInfoSync()
   statusBarHeight.value = sysInfo.statusBarHeight || 44
 })

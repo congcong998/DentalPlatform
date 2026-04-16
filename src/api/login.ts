@@ -26,6 +26,14 @@ export function login(loginForm: ILoginForm) {
 }
 
 /**
+ * H5 登录（口腔平台）
+ * @param loginForm 登录表单
+ */
+export function mLogin(loginForm: ILoginForm) {
+  return http.post<any>('/dental-finance/sys/mLogin', loginForm)
+}
+
+/**
  * 刷新token
  * @param refreshToken 刷新token
  */

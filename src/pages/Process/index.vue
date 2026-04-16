@@ -57,7 +57,7 @@
           <input v-model="form.name" class="common-input" placeholder="姓名 (OCR识别自动填充)">
         </view>
         <view class="form-row">
-          <input v-model="form.idCardNo" class="common-input" placeholder="身份证号 (OCR识别自动填充)" maxlength="18">
+          <input v-model="form.idCardNo" class="common-input" placeholder="身份证号 (OCR识别自动填充)" :maxlength="18">
         </view>
 
         <!-- 身份证反面 -->
@@ -150,7 +150,7 @@
 
         <view class="verify-row">
           <text class="label">手机号</text>
-          <text class="value">138****8888</text>
+          <text class="value">{{ maskedPhone }}</text>
         </view>
 
         <view class="verify-input-group">
@@ -176,6 +176,52 @@
           </checkbox-group>
         </view>
 
+        <view class="section-title mt-40">
+          补充信息
+        </view>
+        <view class="form-row">
+          <input v-model="extraForm.wechatOpenid" class="common-input" placeholder="微信OpenId (可选)">
+        </view>
+        <view class="form-row">
+          <picker mode="selector" :range="repaymentStatusOptions" :value="extraForm.repaymentStatus" @change="onRepaymentStatusChange">
+            <view class="common-input flex items-center">{{ repaymentStatusOptions[extraForm.repaymentStatus] }}</view>
+          </picker>
+        </view>
+        <view class="form-row">
+          <input v-model="extraForm.bankName" class="common-input" placeholder="开户行名称">
+        </view>
+        <view class="form-row">
+          <picker mode="date" :value="toDateValue(extraForm.expireDate)" @change="onDateTimeChange('expireDate', $event)">
+            <view class="common-input flex items-center">{{ extraForm.expireDate || '请选择到期日' }}</view>
+          </picker>
+        </view>
+        <view class="form-row">
+          <picker mode="date" :value="toDateValue(extraForm.repaymentDate)" @change="onDateTimeChange('repaymentDate', $event)">
+            <view class="common-input flex items-center">{{ extraForm.repaymentDate || '请选择还款日' }}</view>
+          </picker>
+        </view>
+        <view class="form-row">
+          <input v-model="extraForm.invitePerson" class="common-input" placeholder="邀请人编码(可选)">
+        </view>
+        <view class="form-row">
+          <input v-model="extraForm.inviteName" class="common-input" placeholder="邀请人姓名(可选)">
+        </view>
+        <view class="form-row">
+          <picker mode="date" :value="toDateValue(extraForm.signDate)" @change="onDateTimeChange('signDate', $event)">
+            <view class="common-input flex items-center">{{ extraForm.signDate || '请选择签约日期' }}</view>
+          </picker>
+        </view>
+        <view class="form-row">
+          <picker mode="date" :value="toDateValue(extraForm.startDate)" @change="onDateTimeChange('startDate', $event)">
+            <view class="common-input flex items-center">{{ extraForm.startDate || '请选择合同开始日期' }}</view>
+          </picker>
+        </view>
+        <view class="form-row">
+          <picker mode="date" :value="toDateValue(extraForm.endDate)" @change="onDateTimeChange('endDate', $event)">
+            <view class="common-input flex items-center">{{ extraForm.endDate || '请选择合同结束日期' }}</view>
+          </picker>
+        </view>
+
         <button class="btn-primary mt-40" :disabled="!canSubmit" @click="submitAll">
           完成签约
         </button>
@@ -186,6 +232,7 @@
 
 <script setup lang="ts">
 import { computed, getCurrentInstance, nextTick, ref } from 'vue'
+import { http } from '@/http/http'
 
 defineOptions({
   name: 'Process',
@@ -199,6 +246,8 @@ definePage({
 
 const statusBarHeight = ref(44)
 const currentStep = ref(1)
+const basicDraft = ref<Record<string, any>>({})
+const contractDraft = ref<Record<string, any>>({})
 
 // 步骤1数据
 const form = ref({
@@ -291,6 +340,10 @@ function clearSign() {
   signCtx.draw()
 }
 
+function cancelSign() {
+  showSignPad.value = false
+}
+
 function confirmSign() {
   if (!hasSigned.value) {
     uni.showToast({ title: '请先签字', icon: 'none' })
@@ -316,11 +369,32 @@ function handleSign() {
 
 // 步骤3数据
 const verifyCode = ref('')
-const livenessPassed = ref(false)
+const livenessPassed = ref(true)
 const isAgreed = ref(true)
+const repaymentStatusOptions = ['未还款', '已还款', '逾期']
+
+const extraForm = ref({
+  wechatOpenid: '',
+  repaymentStatus: 0,
+  bankName: '',
+  expireDate: '',
+  repaymentDate: '',
+  invitePerson: '',
+  inviteName: '',
+  signDate: '',
+  startDate: '',
+  endDate: '',
+})
 
 const canSubmit = computed(() => {
   return verifyCode.value.length >= 4 && livenessPassed.value && isAgreed.value
+})
+
+const maskedPhone = computed(() => {
+  const raw = (basicDraft.value.phone || '').toString()
+  if (raw.length < 7)
+    return raw || '未填写'
+  return `${raw.slice(0, 3)}****${raw.slice(-4)}`
 })
 
 // OCR API
@@ -487,13 +561,83 @@ function onAgreementChange(e: any) {
   isAgreed.value = e.detail.value.length > 0
 }
 
-function submitAll() {
-  uni.showToast({ title: '签约完成', icon: 'success' })
-  setTimeout(() => {
-    uni.redirectTo({
-      url: '/pages/ServicePackage/index',
-    })
-  }, 1000)
+function onRepaymentStatusChange(e: any) {
+  extraForm.value.repaymentStatus = Number(e.detail.value)
+}
+
+function normalizeDateTime(dateStr?: string) {
+  if (!dateStr)
+    return ''
+  return `${dateStr} 00:00:00`
+}
+
+function toDateValue(value?: string) {
+  if (!value)
+    return ''
+  return value.split(' ')[0]
+}
+
+function onDateTimeChange(field: 'expireDate' | 'repaymentDate' | 'signDate' | 'startDate' | 'endDate', e: any) {
+  extraForm.value[field] = normalizeDateTime(e?.detail?.value || '')
+}
+
+async function submitAll() {
+  console.log('Submitting with data:', {
+    basicDraft: basicDraft.value,
+    contractDraft: contractDraft.value,
+    form: form.value,
+    extraForm: extraForm.value,
+  })
+  if (!basicDraft.value.name || !basicDraft.value.phone) {
+    uni.showToast({ title: '请先完善基础信息', icon: 'none' })
+    return
+  }
+
+  const payload = {
+    name: basicDraft.value.name || form.value.name || '',
+    sex: Number(basicDraft.value.sex) || 1,
+    age: Number(basicDraft.value.age) || 0,
+    phone: basicDraft.value.phone || '',
+    idCard: basicDraft.value.idCard || form.value.idCardNo || '',
+    idCardFrontUrl: basicDraft.value.idCardFrontUrl || form.value.idFrontFileUrl || '',
+    idCardBackUrl: form.value.idBackFileUrl || '',
+    email: basicDraft.value.email || '',
+    wechatOpenid: extraForm.value.wechatOpenid || '',
+    address: basicDraft.value.address || '',
+    repaymentStatus: Number(extraForm.value.repaymentStatus || 0),
+    bankCardNo: form.value.cardNumber || '',
+    bankName: extraForm.value.bankName || '',
+    bankCardUrl: form.value.bankCardFileUrl || '',
+    expireDate: extraForm.value.expireDate || '',
+    repaymentDate: extraForm.value.repaymentDate || '',
+    inviteCode: basicDraft.value.inviteCode || '',
+    invitePerson: extraForm.value.invitePerson || '',
+    inviteName: extraForm.value.inviteName || '',
+    contractAmount: Number(contractDraft.value.contractAmount) || 0,
+    contractType: Number(contractDraft.value.contractType) || 0,
+    signDate: extraForm.value.signDate || '',
+    startDate: extraForm.value.startDate || '',
+    endDate: extraForm.value.endDate || '',
+  }
+
+  uni.showLoading({ title: '提交中...' })
+  try {
+    await http.post('/dental-finance/customer/customerInfo/add', payload)
+    uni.showToast({ title: '签约完成', icon: 'success' })
+    uni.removeStorageSync('customer-basic-draft')
+    uni.removeStorageSync('customer-contract-draft')
+    setTimeout(() => {
+      uni.redirectTo({
+        url: '/pages/Repayment/index',
+      })
+    }, 800)
+  }
+  catch {
+    uni.showToast({ title: '提交失败，请稍后重试', icon: 'none' })
+  }
+  finally {
+    uni.hideLoading()
+  }
 }
 
 function goBack() {
@@ -503,6 +647,21 @@ function goBack() {
 onMounted(() => {
   const sysInfo = uni.getSystemInfoSync()
   statusBarHeight.value = sysInfo.statusBarHeight || 44
+
+  basicDraft.value = uni.getStorageSync('customer-basic-draft') || {}
+  contractDraft.value = uni.getStorageSync('customer-contract-draft') || {}
+
+  form.value.name = basicDraft.value.name || form.value.name
+  form.value.idCardNo = basicDraft.value.idCard || form.value.idCardNo
+
+  if (!basicDraft.value.name || !basicDraft.value.phone) {
+    uni.showToast({ title: '请先填写基础信息', icon: 'none' })
+    setTimeout(() => {
+      uni.redirectTo({
+        url: '/pages/BasicInfo/index',
+      })
+    }, 500)
+  }
 })
 </script>
 

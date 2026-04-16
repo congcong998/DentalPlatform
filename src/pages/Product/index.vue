@@ -193,11 +193,20 @@ function handleConfirm() {
     content: `您选择了${selectedPrice.name}套餐，价格：¥${selectedPrice.price}/${selectedPrice.unit}`,
     success: (res) => {
       if (res.confirm) {
+        uni.setStorageSync('customer-contract-draft', {
+          contractAmount: Number(selectedPrice.price),
+          contractType: selectedPriceIndex.value + 1,
+          contractTypeName: selectedPrice.contractType,
+        })
         uni.showToast({
           title: '选择成功',
           icon: 'success',
         })
-        // 这里可以进行后续操作，如跳转到合同页面
+        setTimeout(() => {
+          uni.redirectTo({
+            url: '/pages/Process/index',
+          })
+        }, 400)
       }
     },
   })

@@ -1,0 +1,2 @@
+Cannot destructure property 'tabBar' of 'this.meta' as it is undefined.
+Build failed with errors.
