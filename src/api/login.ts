@@ -62,46 +62,18 @@ export function updateUserPassword(data: IUpdatePassword) {
 }
 
 /**
- * 获取微信登录凭证
- * @returns Promise 包含微信登录凭证(code)
+ * 发送短信验证码
+ * @param phone 手机号
  */
-export function getWxCode() {
-  return new Promise<string>((resolve, reject) => {
-    uni.login({
-      provider: 'weixin',
-      success: (res) => {
-        if (!res.code) {
-          reject(new Error('获取微信登录凭证失败'))
-          return
-        }
-        resolve(res.code)
-      },
-      fail: err => reject(new Error(err)),
-    })
-  })
+export function sendSmsCode(phone: string) {
+  return http.post<{ success: boolean, message: string }>('/auth/sms/send', { phone })
 }
 
 /**
- * 微信登录
- * @param params 微信登录参数，包含code
- * @returns Promise 包含登录结果
+ * 短信验证码登录
+ * @param phone 手机号
+ * @param code 验证码
  */
-export function wxLogin(data: { code: string }) {
-  return http.post<IAuthLoginRes>('/auth/wxLogin', data)
-}
-
-/**
- * 微信认证登录后绑定手机号（小程序）
- * @param code 微信登录凭证
- * @param phoneCode 微信手机号授权凭证
- */
-export function wxBindPhoneLogin(code: string, phoneCode: string) {
-  return http.post<IAuthLoginRes>(
-    `/dental-finance/customer/customerInfo/bind/wx/${code}/${phoneCode}`,
-    undefined,
-    undefined,
-    {
-      'content-type': 'application/x-www-form-urlencoded',
-    },
-  )
+export function smsLogin(phone: string, code: string) {
+  return http.post<IAuthLoginRes>('/auth/sms/login', { phone, code })
 }

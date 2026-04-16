@@ -1,9 +1,9 @@
-<script setup>
+<script setup lang="ts">
 import { showToast } from '@uni-helper/uni-promises'
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { appDescription, appName } from '@/settings/index'
 import { useTokenStore } from '@/store'
-import { getWxCode, wxBindPhoneLogin } from '@/api/login'
+import { sendSmsCode, smsLogin } from '@/api/login'
 import { sleep } from '@/utils'
 
 defineOptions({
@@ -16,6 +16,11 @@ const statusBarHeight = ref(44)
 const agreed = ref(false)
 const isLoading = ref(false)
 const isDev = ref(import.meta.env.DEV) // 仅开发环境显示
+
+const phone = ref('')
+const smsCode = ref('')
+const countdown = ref(0)
+let countdownTimer: ReturnType<typeof setInterval> | null = null
 
 definePage({
   style: {
@@ -30,63 +35,78 @@ onMounted(() => {
   statusBarHeight.value = sysInfo.statusBarHeight || 44
 })
 
-async function onLoginClick(e) {
-  if (!agreed.value) {
-    e.stopPropagation()
-    e.preventDefault()
-
-    await showToast({ title: '请先同意服务协议', icon: 'none' })
-    return false
+onUnmounted(() => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
   }
+})
 
-  return true
+function startCountdown() {
+  countdown.value = 60
+  countdownTimer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      clearInterval(countdownTimer!)
+      countdownTimer = null
+    }
+  }, 1000)
 }
 
-async function onGetPhoneNumber(e) {
+async function onSendCode() {
+  if (countdown.value > 0)
+    return
+
+  const phoneVal = phone.value.trim()
+  if (!/^1\d{10}$/.test(phoneVal)) {
+    await showToast({ title: '请输入正确的手机号', icon: 'none' })
+    return
+  }
+
+  try {
+    await sendSmsCode(phoneVal)
+    startCountdown()
+    await showToast({ title: '验证码已发送', icon: 'none' })
+  }
+  catch {
+    await showToast({ title: '发送验证码失败，请重试', icon: 'none' })
+  }
+}
+
+async function onLogin() {
   if (!agreed.value) {
     await showToast({ title: '请先同意服务协议', icon: 'none' })
     return
   }
 
-  console.log('获取手机号事件: ', e.detail)
-  // getRealtimePhoneNumber 回调字段为 code，getPhoneNumber 旧版为 phoneCode/code
-  const phoneCode = e.detail.code || e.detail.phoneCode
-  const errMsg = e.detail.errMsg || ''
+  const phoneVal = phone.value.trim()
+  const codeVal = smsCode.value.trim()
 
-  if (phoneCode && !errMsg.includes('fail')) {
-    try {
-      isLoading.value = true
-
-      // 先获取微信登录凭证 code
-      const wxCode = await getWxCode()
-
-      // 微信认证登录授权后绑定手机号
-      const res = await wxBindPhoneLogin(wxCode, phoneCode)
-
-      if (res.success) {
-        // 存储 token
-        const token = res.result?.token || res.result
-        tokenStore.token = token
-        // 同时直接写入本地存储，确保路由守卫能读取到
-        uni.setStorageSync('token', token)
-
-        await sleep(500)
-        uni.switchTab({ url: '/pages/index/index' })
-      }
-      else {
-        await showToast({ title: res.message || '登录失败，请重试', icon: 'none' })
-      }
-    }
-    catch (error) {
-      console.error('登录失败:', error)
-      await showToast({ title: '登录失败，请重试', icon: 'error' })
-    }
-    finally {
-      isLoading.value = false
-    }
+  if (!/^1\d{10}$/.test(phoneVal)) {
+    await showToast({ title: '请输入正确的手机号', icon: 'none' })
+    return
   }
-  else {
-    await showToast({ title: '需要授权手机号才能登录', icon: 'none' })
+  if (!/^\d{4,6}$/.test(codeVal)) {
+    await showToast({ title: '请输入验证码', icon: 'none' })
+    return
+  }
+
+  try {
+    isLoading.value = true
+    const res = await smsLogin(phoneVal, codeVal)
+
+    // http 层已处理错误，走到这里说明登录成功
+    tokenStore.setTokenInfo(res)
+
+    await showToast({ title: '登录成功', icon: 'success' })
+    await sleep(500)
+    uni.switchTab({ url: '/pages/index/index' })
+  }
+  catch {
+    await showToast({ title: '登录失败，请重试', icon: 'none' })
+  }
+  finally {
+    isLoading.value = false
   }
 }
 
@@ -104,7 +124,7 @@ function onAgreementClick() {
 async function onDevSkipLogin() {
   try {
     isLoading.value = true
-    tokenStore.token = 'dev-token'
+    tokenStore.setTokenInfo({ token: 'dev-token', expiresIn: 86400 })
     uni.setStorageSync('token', 'dev-token')
     await sleep(300)
     uni.switchTab({ url: '/pages/index/index' })
@@ -153,9 +173,40 @@ async function onDevSkipLogin() {
             </view>
           </view>
 
+          <!-- 手机号输入 -->
+          <view class="mb-4 flex items-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50 px-4">
+            <text class="mr-2 text-sm text-gray-500">+86</text>
+            <input
+              v-model="phone"
+              type="number"
+              :maxlength="11"
+              placeholder="请输入手机号"
+              class="h-12 flex-1 text-sm text-gray-800"
+              placeholder-class="text-gray-400"
+            />
+          </view>
+
+          <!-- 验证码输入 -->
+          <view class="mb-6 flex items-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50 px-4">
+            <input
+              v-model="smsCode"
+              type="number"
+              :maxlength="6"
+              placeholder="请输入验证码"
+              class="h-12 flex-1 text-sm text-gray-800"
+              placeholder-class="text-gray-400"
+            />
+            <view
+              class="ml-2 flex-shrink-0 px-3 py-1.5 text-sm rounded-lg"
+              :class="countdown > 0 ? 'text-gray-400 bg-gray-200' : 'text-blue-500 bg-blue-50'"
+              @click="onSendCode"
+            >
+              <text>{{ countdown > 0 ? `${countdown}s` : '获取验证码' }}</text>
+            </view>
+          </view>
+
           <!-- 登录按钮 -->
           <button
-            v-if="agreed"
             class="h-13 w-full flex items-center justify-center rounded-full border-none shadow-lg"
             :class="isLoading ? 'opacity-70' : ''"
             :style="{
@@ -163,15 +214,14 @@ async function onDevSkipLogin() {
               padding: 0,
             }"
             :disabled="isLoading"
-            open-type="getRealtimePhoneNumber"
-            @getrealtimephonenumber="onGetPhoneNumber"
+            @click="onLogin"
           >
             <view v-if="isLoading" class="mr-2 h-5 w-5 animate-spin border-2 border-white border-t-transparent rounded-full" />
-            <text class="text-base text-white font-semibold">{{ isLoading ? '登录中...' : '微信授权登录' }}</text>
+            <text class="text-base text-white font-semibold">{{ isLoading ? '登录中...' : '登录' }}</text>
           </button>
 
           <!-- 调试模式快速登录（仅开发环境） -->
-          <view v-if="isDev && agreed" class="mt-3">
+          <view v-if="isDev" class="mt-3">
             <button
               class="h-10 w-full flex items-center justify-center rounded-full border-none"
               :style="{ background: '#f3f4f6', color: '#6b7280' }"
@@ -179,18 +229,6 @@ async function onDevSkipLogin() {
             >
               <text class="text-sm">🛠 调试：跳过登录</text>
             </button>
-          </view>
-
-          <!-- 未同意协议时显示的按钮 -->
-          <view
-            v-else
-            class="h-13 w-full flex items-center justify-center rounded-full opacity-50 shadow-lg"
-            :style="{
-              background: 'linear-gradient(to right, #3b82f6, #2563eb)',
-            }"
-            @click="onLoginClick"
-          >
-            <text class="text-base text-white font-semibold">微信授权登录</text>
           </view>
 
           <!-- 协议勾选 -->
