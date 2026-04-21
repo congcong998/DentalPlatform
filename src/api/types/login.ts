@@ -21,6 +21,23 @@ export interface IDoubleTokenRes {
 export type IAuthLoginRes = ISingleTokenRes | IDoubleTokenRes
 
 /**
+ * 客户端短信登录返回
+ */
+export interface ICustomerMobileLoginRes {
+  customerCode: string
+  name: string
+  sex: number
+  age: number
+  phone: string
+  idCard: string
+  address: string
+  inviteCode: string
+  invitePerson: string
+  inviteName: string
+  token: string
+}
+
+/**
  * 用户信息
  */
 export interface IUserInfoRes {

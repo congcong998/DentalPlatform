@@ -16,9 +16,6 @@ interface ToLoginPageOptions {
 
 // TODO: 自己增加登录页
 let LOGIN_PAGE = '/pages/login/index'
-// #ifdef H5
-LOGIN_PAGE = '/pages/login-h5/index'
-// #endif
 
 /**
  * 跳转到登录页, 带防抖处理

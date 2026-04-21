@@ -22,6 +22,16 @@ const smsCode = ref('')
 const countdown = ref(0)
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 
+function goHomeAfterLogin() {
+  // #ifdef H5
+  uni.reLaunch({ url: '/pages/index/index' })
+  // #endif
+
+  // #ifndef H5
+  uni.switchTab({ url: '/pages/index/index' })
+  // #endif
+}
+
 definePage({
   style: {
     navigationStyle: 'custom',
@@ -31,11 +41,6 @@ definePage({
 })
 
 onMounted(() => {
-  // #ifdef H5
-  uni.reLaunch({ url: '/pages/login-h5/index' })
-  return
-  // #endif
-
   const sysInfo = uni.getSystemInfoSync()
   statusBarHeight.value = sysInfo.statusBarHeight || 44
 })
@@ -100,12 +105,20 @@ async function onLogin() {
     isLoading.value = true
     const res = await smsLogin(phoneVal, codeVal)
 
-    // http 层已处理错误，走到这里说明登录成功
-    tokenStore.setTokenInfo(res)
+    if (!res?.token) {
+      await showToast({ title: '登录失败，未获取到token', icon: 'none' })
+      return
+    }
+
+    // 短信登录返回业务对象，token 在 result.token（http 层已提取 result）
+    tokenStore.setTokenInfo({
+      token: res.token,
+      expiresIn: 7200,
+    })
 
     await showToast({ title: '登录成功', icon: 'success' })
     await sleep(500)
-    uni.switchTab({ url: '/pages/index/index' })
+    goHomeAfterLogin()
   }
   catch {
     await showToast({ title: '登录失败，请重试', icon: 'none' })
@@ -132,7 +145,7 @@ async function onDevSkipLogin() {
     tokenStore.setTokenInfo({ token: 'dev-token', expiresIn: 86400 })
     uni.setStorageSync('token', 'dev-token')
     await sleep(300)
-    uni.switchTab({ url: '/pages/index/index' })
+    goHomeAfterLogin()
   }
   finally {
     isLoading.value = false

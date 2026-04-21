@@ -1,4 +1,4 @@
-import type { IAuthLoginRes, ICaptcha, IDoubleTokenRes, IUpdateInfo, IUpdatePassword, IUserInfoRes } from './types/login'
+import type { IAuthLoginRes, ICaptcha, ICustomerMobileLoginRes, IDoubleTokenRes, IUpdateInfo, IUpdatePassword, IUserInfoRes } from './types/login'
 import { http } from '@/http/http'
 
 /**
@@ -71,17 +71,17 @@ export function updateUserPassword(data: IUpdatePassword) {
 
 /**
  * 发送短信验证码
- * @param phone 手机号
+ * @param mobile 手机号
  */
-export function sendSmsCode(phone: string) {
-  return http.post<{ success: boolean, message: string }>('/auth/sms/send', { phone })
+export function sendSmsCode(mobile: string) {
+  return http.post<{ success: boolean, message: string }>(`/dental-finance/customer/customerInfo/mobile/code?mobile=${mobile}`)
 }
 
 /**
  * 短信验证码登录
- * @param phone 手机号
- * @param code 验证码
+ * @param mobile 手机号
+ * @param smsCode 验证码
  */
-export function smsLogin(phone: string, code: string) {
-  return http.post<IAuthLoginRes>('/auth/sms/login', { phone, code })
+export function smsLogin(mobile: string, smsCode: string) {
+  return http.post<ICustomerMobileLoginRes>(`/dental-finance/customer/customerInfo/mobile/login?mobile=${mobile}&smsCode=${smsCode}`)
 }

@@ -13,15 +13,6 @@ onLaunch((options) => {
 onShow((options) => {
   console.log('App.vue onShow', options)
 
-  // H5 入口统一到基础信息页，避免默认落到还款计划页
-  // #ifdef H5
-  if (!options?.path || options.path === 'pages/index/index') {
-    uni.reLaunch({
-      url: '/pages/BasicInfo/index',
-    })
-    return
-  }
-  // #endif
 
   // 处理直接进入页面路由的情况：如h5直接输入路由、微信小程序分享后进入等
   // https://github.com/unibest-tech/unibest/issues/192
