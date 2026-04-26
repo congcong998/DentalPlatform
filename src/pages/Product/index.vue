@@ -2,24 +2,6 @@
 <template>
   <view class="product-container">
     <view class="product-content">
-      <!-- 服务内容 -->
-      <view class="service-section">
-        <view class="section-title">
-          服务内容
-        </view>
-        <view class="service-list">
-          <view v-for="(service, index) in services" :key="index" class="service-item">
-            <view class="service-icon">
-              {{ service.icon }}
-            </view>
-            <view class="service-info">
-              <text class="service-name">{{ service.name }}</text>
-              <text class="service-desc">{{ service.description }}</text>
-            </view>
-          </view>
-        </view>
-      </view>
-
       <!-- 价格选择 -->
       <view class="price-section">
         <view class="section-title">
@@ -27,29 +9,24 @@
         </view>
         <view class="price-list">
           <view
-            v-for="(price, index) in priceOptions" :key="index" class="price-card"
+            v-for="(price, index) in priceOptions" :key="price.id || index" class="price-card"
             :class="{ selected: selectedPriceIndex === index }" @click="selectPrice(index)"
           >
-            <!-- 标签居中 -->
-            <view v-if="price.tag" class="price-tag-center">
-              {{ price.tag }}
-            </view>
             <view class="price-header">
-              <text class="price-name">{{ price.name }}</text>
+              <text class="price-name">{{ price.contractName }}</text>
             </view>
             <view class="price-amount">
               <text class="price-symbol">¥</text>
-              <text class="price-value">{{ price.price }}</text>
-              <text class="price-unit">/{{ price.unit }}</text>
+              <text class="price-value">{{ price.contractAmount }}</text>
             </view>
-            <view class="contract-info">
-              <text class="contract-label">合同类型：</text>
-              <text class="contract-type">{{ price.contractType }}</text>
-            </view>
-            <view class="price-features">
-              <view v-for="(feature, fIndex) in price.features" :key="fIndex" class="feature-item">
-                <text class="feature-icon">✓</text>
-                <text class="feature-text">{{ feature }}</text>
+            <view class="fee-info">
+              <view class="fee-item">
+                <text class="fee-label">医生操作费：</text>
+                <text class="fee-value">¥{{ price.operationFee }}</text>
+              </view>
+              <view class="fee-item">
+                <text class="fee-label">服务费：</text>
+                <text class="fee-value">¥{{ price.serviceFee }}</text>
               </view>
             </view>
             <!-- 选中按钮绝对定位 -->
@@ -76,7 +53,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { getContractConfigList, type IContractConfig } from '@/api/contract_api'
 
 definePage({
   style: {
@@ -84,91 +62,26 @@ definePage({
   },
 })
 
-// 服务内容
-const services = ref([
-  {
-    icon: '🦷',
-    name: '口腔检查',
-    description: '全面的口腔健康检查与评估',
-  },
-  {
-    icon: '🔬',
-    name: '专业洁牙',
-    description: '超声波洁牙，去除牙结石',
-  },
-  {
-    icon: '💊',
-    name: '治疗方案',
-    description: '个性化口腔治疗方案制定',
-  },
-  {
-    icon: '📋',
-    name: '健康档案',
-    description: '建立完整的口腔健康档案',
-  },
-])
-
-// 价格选项
-const priceOptions = ref([
-  {
-    name: '基础版',
-    price: '999',
-    unit: '年',
-    tag: '',
-    contractType: '基础服务合同',
-    features: ['基础口腔检查', '洁牙服务1次/年', '健康咨询', '电子档案'],
-  },
-  {
-    name: '标准版',
-    price: '1999',
-    unit: '年',
-    tag: '推荐',
-    contractType: '标准服务合同',
-    features: [
-      '全面口腔检查',
-      '洁牙服务2次/年',
-      '专家咨询',
-      '优先预约',
-      '健康档案',
-      '定期提醒',
-    ],
-  },
-  {
-    name: '高级版',
-    price: '3999',
-    unit: '年',
-    tag: '热门',
-    contractType: '高级服务合同',
-    features: [
-      '深度口腔检查',
-      '洁牙服务4次/年',
-      '专家一对一',
-      'VIP预约通道',
-      '完整健康档案',
-      '智能提醒',
-      '家庭共享',
-    ],
-  },
-  {
-    name: '尊享版',
-    price: '6999',
-    unit: '年',
-    tag: 'VIP',
-    contractType: '尊享服务合同',
-    features: [
-      '全方位口腔检查',
-      '不限次数洁牙',
-      '首席专家服务',
-      '绿色就诊通道',
-      '终身健康档案',
-      '专属健康管家',
-      '全家庭服务',
-      '紧急预约',
-    ],
-  },
-])
-
+// 价格选项（从接口获取）
+const priceOptions = ref<IContractConfig[]>([])
 const selectedPriceIndex = ref(-1)
+
+// 获取合同配置列表
+onMounted(async () => {
+  uni.showLoading({ title: '加载中...' })
+  try {
+    const res = await getContractConfigList({ pageNo: 1, pageSize: 100 })
+    if (res?.records) {
+      priceOptions.value = res.records
+    }
+  }
+  catch {
+    uni.showToast({ title: '获取套餐失败', icon: 'none' })
+  }
+  finally {
+    uni.hideLoading()
+  }
+})
 
 function selectPrice(index: number) {
   selectedPriceIndex.value = index
@@ -190,20 +103,23 @@ function handleConfirm() {
   const selectedPrice = priceOptions.value[selectedPriceIndex.value]
   uni.showModal({
     title: '确认选择',
-    content: `您选择了${selectedPrice.name}套餐，价格：¥${selectedPrice.price}/${selectedPrice.unit}`,
+    content: `您选择了${selectedPrice.contractName}套餐，总金额：¥${selectedPrice.contractAmount}`,
     success: (res) => {
       if (res.confirm) {
         uni.setStorageSync('customer-contract-draft', {
-          contractAmount: Number(selectedPrice.price),
-          contractType: selectedPriceIndex.value + 1,
-          contractTypeName: selectedPrice.contractType,
+          contractAmount: selectedPrice.contractAmount,
+          contractName: selectedPrice.contractName,
+          operationFee: selectedPrice.operationFee,
+          serviceFee: selectedPrice.serviceFee,
+          configCode: selectedPrice.configCode,
         })
         uni.showToast({
           title: '选择成功',
           icon: 'success',
         })
+
         setTimeout(() => {
-          uni.redirectTo({
+          uni.navigateTo({
             url: '/pages/Process/index',
           })
         }, 400)
@@ -326,25 +242,6 @@ function handleConfirm() {
         transform: translateY(-6rpx) scale(1.04);
       }
 
-      .price-tag-center {
-        position: absolute;
-        top: -24rpx;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 2;
-        padding: 8rpx 36rpx;
-        background: linear-gradient(135deg, #1890ff 60%, #40a9ff 100%);
-        color: #fff;
-        font-size: 22rpx;
-        border-radius: 32rpx;
-        pointer-events: none;
-        box-shadow: 0 4rpx 16rpx rgba(24, 144, 255, 0.12);
-        font-weight: 700;
-        letter-spacing: 3rpx;
-        border: 2rpx solid #fff;
-        text-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.1);
-      }
-
       .price-header {
         display: flex;
         align-items: center;
@@ -388,48 +285,29 @@ function handleConfirm() {
         }
       }
 
-      .contract-info {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 12rpx 0;
-        background: rgba(24, 144, 255, 0.06);
-        border-radius: 8rpx;
-        margin-bottom: 18rpx;
-
-        .contract-label {
-          font-size: 24rpx;
-          color: #666;
-        }
-
-        .contract-type {
-          font-size: 24rpx;
-          color: #1890ff;
-          font-weight: 600;
-          margin-left: 8rpx;
-        }
-      }
-
-      .price-features {
+      .fee-info {
         display: flex;
         flex-direction: column;
         gap: 12rpx;
-        margin-bottom: 10rpx;
+        padding: 16rpx;
+        background: rgba(24, 144, 255, 0.06);
+        border-radius: 8rpx;
+        margin-top: 18rpx;
 
-        .feature-item {
+        .fee-item {
           display: flex;
           align-items: center;
-          gap: 8rpx;
+          justify-content: space-between;
 
-          .feature-icon {
-            color: #52c41a;
-            font-weight: bold;
-            font-size: 22rpx;
-          }
-
-          .feature-text {
+          .fee-label {
             font-size: 24rpx;
             color: #666;
+          }
+
+          .fee-value {
+            font-size: 24rpx;
+            color: #1890ff;
+            font-weight: 600;
           }
         }
       }

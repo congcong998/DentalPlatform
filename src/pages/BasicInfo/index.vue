@@ -196,7 +196,7 @@ function onDistrictChange(e: any) {
 }
 
 // 办理OCR识别
-const OCR_ID_CARD_FRONT_API = '/dental-finance/customer/customerInfo/ocr/idCardFront'
+const OCR_ID_CARD_FRONT_API = '/customer/customerInfo/ocr/idCardFront'
 
 function parseUploadData(uploadRes: any) {
   const raw = uploadRes?.data
@@ -314,7 +314,7 @@ function handleSubmit() {
   uni.setStorageSync('customer-basic-draft', draft)
   uni.showToast({ title: '已保存，继续下一步', icon: 'success' })
   setTimeout(() => {
-    uni.redirectTo({
+    uni.navigateTo({
       url: '/pages/Product/index',
     })
   }, 400)

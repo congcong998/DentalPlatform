@@ -8,9 +8,6 @@ defineOptions({
 })
 
 definePage({
-  // #ifndef H5
-  type: 'home',
-  // #endif
   style: {
     navigationStyle: 'custom',
     navigationBarTitleText: '还款计划',

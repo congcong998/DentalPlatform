@@ -24,12 +24,12 @@ export interface IRepaymentPlan {
  * 还款计划-通过id查询
  */
 export function getRepaymentPlanById(id: string) {
-  return http.get<IRepaymentPlan>('/dental-finance/repayment/repaymentPlan/queryById', { id })
+  return http.get<IRepaymentPlan>('/repayment/repaymentPlan/queryById', { id })
 }
 
 /**
  * 还款计划-列表查询
  */
 export function getRepaymentPlanList(params?: { customerCode?: string, contractCode?: string }) {
-  return http.get<{ records: IRepaymentPlan[], total: number }>('/dental-finance/repayment/repaymentPlan/list', params)
+  return http.get<{ records: IRepaymentPlan[], total: number }>('/repayment/repaymentPlan/list', params)
 }

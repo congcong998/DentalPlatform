@@ -10,11 +10,21 @@ import { ResultEnum } from './tools/enum'
 let refreshing = false // 防止重复刷新 token 标识
 let taskQueue: (() => void)[] = [] // 刷新 token 请求队列
 
+// 服务器基础地址
+const BASE_URL = import.meta.env.VITE_SERVER_BASEURL || 'http://47.96.99.19:8283'
+
 export function http<T>(options: CustomRequestOptions) {
   // 1. 返回 Promise 对象
   return new Promise<T>((resolve, reject) => {
+    // 处理 URL，添加 baseURL
+    let { url } = options
+    if (url && !url.startsWith('http') && !url.startsWith('//')) {
+      url = `${BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`
+    }
+
     uni.request({
       ...options,
+      url,
       dataType: 'json',
       // #ifndef MP-WEIXIN
       responseType: 'json',
@@ -101,7 +111,7 @@ export function http<T>(options: CustomRequestOptions) {
               title: responseData.msg || responseData.message || '请求错误',
             })
           }
-          // 兼容后端响应字段为 result 的情况（如 /dental-finance 系列接口）
+          // 兼容后端响应字段为 result 的情况（如  系列接口）
           return resolve(responseData.data ?? responseData.result)
         }
 

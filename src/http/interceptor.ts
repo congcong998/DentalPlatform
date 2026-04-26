@@ -7,7 +7,7 @@ import { stringifyQuery } from './tools/queryString'
 
 // 请求基准地址
 const baseUrl = getEnvBaseUrl()
-const LOGIN_API_PATH = '/dental-finance/sys/mLogin'
+const LOGIN_API_PATH = '/sys/mLogin'
 const DEFAULT_TENANT_ID = '1'
 
 function isObjectLike(value: unknown): value is Record<string, any> {

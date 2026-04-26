@@ -27,22 +27,29 @@
         <view class="step-num">
           2
         </view>
-        <text>电子签</text>
+        <text>合同信息补充</text>
       </view>
       <view class="step-line" :class="{ active: currentStep >= 3 }" />
       <view class="step-item" :class="{ active: currentStep >= 3 }">
         <view class="step-num">
           3
         </view>
-        <text>验证签约</text>
+        <text>乙方签署</text>
+      </view>
+      <view class="step-line" :class="{ active: currentStep >= 4 }" />
+      <view class="step-item" :class="{ active: currentStep >= 4 }">
+        <view class="step-num">
+          4
+        </view>
+        <text>甲方签署</text>
       </view>
     </view>
 
     <view class="process-content">
-      <!-- 步骤1: 基本信息补充 & OCR -->
+      <!-- 步骤1: 信息补充 -->
       <view v-if="currentStep === 1" class="step-section">
         <view class="section-title">
-          证件信息
+          信息补充
         </view>
 
         <!-- 身份证正面 -->
@@ -88,11 +95,66 @@
         </button>
       </view>
 
-      <!-- 步骤2: 电子签 -->
+      <!-- 步骤2: 合同信息补充 -->
       <view v-if="currentStep === 2" class="step-section">
         <view class="section-title">
-          电子合同签署
+          合同信息补充
         </view>
+
+        <view class="form-row">
+          <view class="form-label">合同名称</view>
+          <input v-model="contractForm.contractName" class="common-input" placeholder="请输入合同名称">
+        </view>
+
+        <view class="form-row">
+          <view class="form-label">支付分期数量</view>
+          <input v-model="contractForm.installmentCount" class="common-input" type="number" placeholder="请输入支付分期数量">
+        </view>
+        <view class="form-row">
+          <view class="form-label">每期支付金额</view>
+          <input v-model="contractForm.perAmount" class="common-input" type="digit" placeholder="请输入每期支付金额">
+        </view>
+        <view class="form-row">
+          <view class="form-label">银行开户银行</view>
+          <input v-model="contractForm.bankName" class="common-input" placeholder="请输入银行开户银行">
+        </view>
+        <view class="form-row">
+          <view class="form-label">自愿宣传期数(月)</view>
+          <input v-model="contractForm.publicityMonths" class="common-input" type="number" placeholder="请输入自愿宣传期数">
+        </view>
+        <view class="form-row">
+          <view class="form-label">推荐客户数量</view>
+          <input v-model="contractForm.recommendCount" class="common-input" type="number" placeholder="请输入推荐客户数量">
+        </view>
+        <view class="form-row">
+          <view class="form-label">首次还款日期</view>
+          <picker mode="date" :value="contractForm.firstRepaymentDate" @change="onFirstRepaymentDateChange">
+            <view class="common-input flex items-center">{{ contractForm.firstRepaymentDate || '请选择首次还款日期' }}</view>
+          </picker>
+        </view>
+        <view class="form-row">
+          <view class="form-label">服务委托方</view>
+          <picker mode="selector" :range="serviceProviderOptions" :value="contractForm.serviceProviderIndex" @change="onServiceProviderChange">
+            <view class="common-input flex items-center">{{ serviceProviderOptions[contractForm.serviceProviderIndex] || '请选择服务委托方' }}</view>
+          </picker>
+        </view>
+
+        <view class="form-row">
+          <view class="form-label">医生签名</view>
+          <input v-model="contractForm.doctorSign" class="common-input" placeholder="请输入医生签名">
+        </view>
+
+        <button class="btn-primary mt-40" @click="nextStep">
+          下一步
+        </button>
+      </view>
+
+      <!-- 步骤3: 乙方签署 -->
+      <view v-if="currentStep === 3" class="step-section">
+        <view class="section-title">
+          乙方签署
+        </view>
+
         <view class="contract-box">
           <text class="contract-text">在此处显示合同条款内容...</text>
           <text class="contract-text">1. 借款人需按时还款...</text>
@@ -109,120 +171,99 @@
           请在上方区域完成签名
         </view>
 
+        <!-- 签字弹层 -->
+        <view v-if="showSignPad && !isSigningForPartyA" class="sign-modal">
+          <view class="sign-panel">
+            <view class="sign-title">
+              请在下方签字
+            </view>
+            <canvas
+              id="signCanvas"
+              canvas-id="signCanvas"
+              class="sign-canvas"
+              @touchstart.stop.prevent="onSignStart"
+              @touchmove.stop.prevent="onSignMove"
+              @touchend.stop.prevent="onSignEnd"
+            />
+            <view class="sign-actions">
+              <button class="sign-btn" @click="clearSign">
+                清空
+              </button>
+              <button class="sign-btn" @click="cancelSign">
+                取消
+              </button>
+              <button class="sign-btn primary" @click="confirmSign">
+                确认
+              </button>
+            </view>
+          </view>
+        </view>
+
         <button class="btn-primary mt-40" @click="nextStep">
           下一步
         </button>
       </view>
 
-      <!-- 签字弹层 -->
-      <view v-if="showSignPad" class="sign-modal">
-        <view class="sign-panel">
-          <view class="sign-title">
-            请在下方签字
-          </view>
-          <canvas
-            id="signCanvas"
-            canvas-id="signCanvas"
-            class="sign-canvas"
-            @touchstart.stop.prevent="onSignStart"
-            @touchmove.stop.prevent="onSignMove"
-            @touchend.stop.prevent="onSignEnd"
-          />
-          <view class="sign-actions">
-            <button class="sign-btn" @click="clearSign">
-              清空
-            </button>
-            <button class="sign-btn" @click="cancelSign">
-              取消
-            </button>
-            <button class="sign-btn primary" @click="confirmSign">
-              确认
-            </button>
-          </view>
-        </view>
-      </view>
-
-      <!-- 步骤3: 验证 & 签约 -->
-      <view v-if="currentStep === 3" class="step-section">
+      <!-- 步骤4: 甲方签署 -->
+      <view v-if="currentStep === 4" class="step-section">
         <view class="section-title">
-          验证与签约
+          甲方签署
         </view>
 
-        <view class="verify-row">
-          <text class="label">手机号</text>
-          <text class="value">{{ maskedPhone }}</text>
+        <view class="contract-box">
+          <text class="contract-text">在此处显示合同条款内容...</text>
+          <text class="contract-text">1. 甲方需按时付款...</text>
+          <text class="contract-text">2. 逾期将产生违约责任...</text>
         </view>
 
-        <view class="verify-input-group">
-          <input v-model="verifyCode" type="number" placeholder="请输入验证码" class="code-input">
-          <view class="get-code-btn" @click="getVerifyCode">
-            获取验证码
+        <view class="signature-box" @click="handlePartyASign">
+          <view v-if="!partyASignatureImage" class="sign-placeholder">
+            点击此处进行手写签名（甲方）
+          </view>
+          <image v-else :src="partyASignatureImage" mode="heightFix" class="sign-img" />
+        </view>
+        <view class="sign-tip">
+          请在上方区域完成甲方签名
+        </view>
+
+        <!-- 签字弹层 -->
+        <view v-if="showSignPad && isSigningForPartyA" class="sign-modal">
+          <view class="sign-panel">
+            <view class="sign-title">
+              请在下方签字
+            </view>
+            <canvas
+              id="signCanvas"
+              canvas-id="signCanvas"
+              class="sign-canvas"
+              @touchstart.stop.prevent="onSignStart"
+              @touchmove.stop.prevent="onSignMove"
+              @touchend.stop.prevent="onSignEnd"
+            />
+            <view class="sign-actions">
+              <button class="sign-btn" @click="clearSign">
+                清空
+              </button>
+              <button class="sign-btn" @click="cancelSign">
+                取消
+              </button>
+              <button class="sign-btn primary" @click="confirmSign">
+                确认
+              </button>
+            </view>
           </view>
         </view>
 
-        <view class="liveness-check" @click="startLivenessCheck">
-          <view class="check-status">
-            <text :class="livenessPassed ? 'success-icon' : 'pending-icon'">{{ livenessPassed ? '✓' : '○' }}</text>
-            <text>{{ livenessPassed ? '活体检测已通过' : '点击开始活体检测' }}</text>
-          </view>
-        </view>
-
-        <view class="agreement-check">
+        <view class="agreement-check mt-40">
           <checkbox-group @change="onAgreementChange">
             <label class="agreement-label">
               <checkbox value="agree" :checked="isAgreed" />
-              <text>我已阅读并同意《自动代扣款协议》</text>
+              <text>我已阅读并同意《服务协议》</text>
             </label>
           </checkbox-group>
         </view>
 
-        <view class="section-title mt-40">
-          补充信息
-        </view>
-        <view class="form-row">
-          <input v-model="extraForm.wechatOpenid" class="common-input" placeholder="微信OpenId (可选)">
-        </view>
-        <view class="form-row">
-          <picker mode="selector" :range="repaymentStatusOptions" :value="extraForm.repaymentStatus" @change="onRepaymentStatusChange">
-            <view class="common-input flex items-center">{{ repaymentStatusOptions[extraForm.repaymentStatus] }}</view>
-          </picker>
-        </view>
-        <view class="form-row">
-          <input v-model="extraForm.bankName" class="common-input" placeholder="开户行名称">
-        </view>
-        <view class="form-row">
-          <picker mode="date" :value="toDateValue(extraForm.expireDate)" @change="onDateTimeChange('expireDate', $event)">
-            <view class="common-input flex items-center">{{ extraForm.expireDate || '请选择到期日' }}</view>
-          </picker>
-        </view>
-        <view class="form-row">
-          <picker mode="date" :value="toDateValue(extraForm.repaymentDate)" @change="onDateTimeChange('repaymentDate', $event)">
-            <view class="common-input flex items-center">{{ extraForm.repaymentDate || '请选择还款日' }}</view>
-          </picker>
-        </view>
-        <view class="form-row">
-          <input v-model="extraForm.invitePerson" class="common-input" placeholder="邀请人编码(可选)">
-        </view>
-        <view class="form-row">
-          <input v-model="extraForm.inviteName" class="common-input" placeholder="邀请人姓名(可选)">
-        </view>
-        <view class="form-row">
-          <picker mode="date" :value="toDateValue(extraForm.signDate)" @change="onDateTimeChange('signDate', $event)">
-            <view class="common-input flex items-center">{{ extraForm.signDate || '请选择签约日期' }}</view>
-          </picker>
-        </view>
-        <view class="form-row">
-          <picker mode="date" :value="toDateValue(extraForm.startDate)" @change="onDateTimeChange('startDate', $event)">
-            <view class="common-input flex items-center">{{ extraForm.startDate || '请选择合同开始日期' }}</view>
-          </picker>
-        </view>
-        <view class="form-row">
-          <picker mode="date" :value="toDateValue(extraForm.endDate)" @change="onDateTimeChange('endDate', $event)">
-            <view class="common-input flex items-center">{{ extraForm.endDate || '请选择合同结束日期' }}</view>
-          </picker>
-        </view>
-
-        <button class="btn-primary mt-40" :disabled="!canSubmit" @click="submitAll">
+        <button class="btn-primary mt-40" :disabled="!canPartyASubmit" @click="submitAll">
           完成签约
         </button>
       </view>
@@ -231,8 +272,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, getCurrentInstance, nextTick, ref } from 'vue'
+import { computed, getCurrentInstance, nextTick, onMounted, onShow, ref } from 'vue'
 import { http } from '@/http/http'
+import {paasV2CreateContract, paasV2PartyASign, paasV2PartyBSign} from '@/api/paas_v2_api'
+import { addCustomer, generateDentalContract, generateRecommendContract } from '@/api/customer_api'
 
 defineOptions({
   name: 'Process',
@@ -263,7 +306,25 @@ const form = ref({
 })
 
 // 步骤2数据
-const signatureImage = ref('')
+const signatureImage = ref('') // 乙方签名
+const partyASignatureImage = ref('') // 甲方签名
+const isSigningForPartyA = ref(false) // 当前是否在为甲方签名
+const contractUrl = ref('') // 合同URL
+
+// 合同表单数据
+const serviceProviderOptions = ['服务委托方A', '服务委托方B', '服务委托方C']
+const contractForm = ref({
+  contractName: '',          // 合同名称
+  fileLists: [] as { fileName: string, fileUrl: string }[], // 文件列表
+  installmentCount: '',       // 支付分期数量
+  perAmount: '',             // 每期支付金额
+  bankName: '',              // 银行开户银行
+  publicityMonths: '',        // 自愿宣传期数(月)
+  recommendCount: '',        // 推荐客户数量
+  firstRepaymentDate: '',    // 首次还款日期
+  serviceProviderIndex: 0,   // 服务委托方索引
+  doctorSign: '',            // 医生签名
+})
 
 // 签字相关
 const showSignPad = ref(false)
@@ -273,6 +334,160 @@ const lastPoint = ref({ x: 0, y: 0 })
 const canvasRect = ref({ left: 0, top: 0 })
 let signCtx: UniApp.CanvasContext | null = null
 const proxy = getCurrentInstance()?.proxy as any
+
+// 实名认证完成后回调
+let pendingContractId: string | null = null
+
+// 处理实名认证完成
+async function handleVerificationComplete(contractId: string) {
+  if (!contractId) {
+    uni.showToast({ title: '缺少合同ID', icon: 'none' })
+    isProcessingReturn = false
+    return
+  }
+
+  uni.showLoading({ title: '验证中...' })
+  try {
+    // 调用乙方签署预览
+    const partyBUrl = await paasV2PartyBSign(contractId)
+    console.log('partyBUrl', partyBUrl)
+    if (partyBUrl) {
+      // 保存状态并打开乙方签署页面
+      sessionStorage.setItem('pendingContractId', contractId)
+      sessionStorage.setItem('pendingAction', 'partyB')
+      // 重置标志
+      isProcessingReturn = false
+      // 使用 replace 避免历史记录问题
+      window.location.replace(partyBUrl)
+      return
+    }
+
+    // 如果没有返回URL，进入下一步
+    isProcessingReturn = false
+    currentStep.value = 3
+  }
+  catch {
+    isProcessingReturn = false
+    uni.showToast({ title: '验证失败', icon: 'none' })
+  }
+  finally {
+    uni.hideLoading()
+  }
+}
+
+// 处理乙方签署完成
+async function handlePartyBSignComplete(contractId: string) {
+  console.log('handlePartyBSignComplete called, contractId:', contractId)
+  if (!contractId) {
+    uni.showToast({ title: '缺少合同ID', icon: 'none' })
+    isProcessingReturn = false
+    return
+  }
+
+  uni.showLoading({ title: '签署中...' })
+  try {
+    // 调用甲方签署预览
+    const partyAUrl = await paasV2PartyASign(contractId)
+    console.log('partyAUrl', partyAUrl)
+    if (partyAUrl) {
+      // 保存状态并打开甲方签署页面
+      sessionStorage.setItem('pendingContractId', contractId)
+      sessionStorage.setItem('pendingAction', 'partyA')
+      // 重置标志
+      isProcessingReturn = false
+      // 使用 replace 避免历史记录问题
+      window.location.replace(partyAUrl)
+      return
+    }
+    else {
+      console.log('partyAUrl is empty')
+      isProcessingReturn = false
+    }
+  }
+  catch (err) {
+    console.error('handlePartyBSignComplete error:', err)
+    isProcessingReturn = false
+    uni.showToast({ title: '签署失败', icon: 'none' })
+  }
+  finally {
+    uni.hideLoading()
+  }
+}
+
+// 处理甲方签署完成
+async function handlePartyASignComplete(contractId: string) {
+  if (!contractId) {
+    uni.showToast({ title: '缺少合同ID', icon: 'none' })
+    isProcessingReturn = false
+    return
+  }
+
+  // 甲方签署完成，跳转到BasicInfo页面
+  uni.showToast({ title: '签署完成', icon: 'success' })
+  isProcessingReturn = false
+  setTimeout(() => {
+    uni.redirectTo({ url: '/pages/BasicInfo/index' })
+  }, 800)
+}
+
+// 监听页面显示，检测签署流程是否完成
+let isProcessingReturn = false
+
+onMounted(() => {
+  // 首次加载时检查状态
+  setTimeout(() => {
+    if (!isProcessingReturn) {
+      handlePageReturn()
+    }
+  }, 100)
+})
+
+// #ifdef H5
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) {
+    // 页面从 bfcache 恢复
+    setTimeout(() => {
+      if (!isProcessingReturn) {
+        handlePageReturn()
+      }
+    }, 100)
+  }
+})
+// #endif
+
+function handlePageReturn() {
+  // 每次都强制重置
+  isProcessingReturn = false
+
+  const contractId = sessionStorage.getItem('pendingContractId') || ''
+  const action = sessionStorage.getItem('pendingAction') || ''
+  console.log('handlePageReturn called, contractId:', contractId, 'action:', action)
+
+  if (!contractId || !action) {
+    console.log('handlePageReturn early return')
+    return
+  }
+
+  // 标记为处理中，防止重复触发
+  isProcessingReturn = true
+
+  // 清除状态
+  sessionStorage.removeItem('pendingContractId')
+  sessionStorage.removeItem('pendingAction')
+
+  if (action === 'verify') {
+    // 从实名认证页面返回，调用乙方签署
+    handleVerificationComplete(contractId)
+  }
+  else if (action === 'partyB') {
+    // 从乙方签署页面返回，调用甲方签署
+    handlePartyBSignComplete(contractId)
+  }
+  else if (action === 'partyA') {
+    // 从甲方签署页面返回，签约完成
+    handlePartyASignComplete(contractId)
+  }
+}
 
 function initSignCanvas() {
   signCtx = uni.createCanvasContext('signCanvas', proxy)
@@ -353,7 +568,12 @@ function confirmSign() {
     {
       canvasId: 'signCanvas',
       success: (res) => {
-        signatureImage.value = res.tempFilePath
+        if (isSigningForPartyA.value) {
+          partyASignatureImage.value = res.tempFilePath
+        }
+        else {
+          signatureImage.value = res.tempFilePath
+        }
         showSignPad.value = false
       },
       fail: () => uni.showToast({ title: '签字保存失败', icon: 'none' }),
@@ -363,6 +583,13 @@ function confirmSign() {
 }
 
 function handleSign() {
+  isSigningForPartyA.value = false
+  showSignPad.value = true
+  nextTick(() => initSignCanvas())
+}
+
+function handlePartyASign() {
+  isSigningForPartyA.value = true
   showSignPad.value = true
   nextTick(() => initSignCanvas())
 }
@@ -386,8 +613,8 @@ const extraForm = ref({
   endDate: '',
 })
 
-const canSubmit = computed(() => {
-  return verifyCode.value.length >= 4 && livenessPassed.value && isAgreed.value
+const canPartyASubmit = computed(() => {
+  return partyASignatureImage.value && isAgreed.value
 })
 
 const maskedPhone = computed(() => {
@@ -399,9 +626,9 @@ const maskedPhone = computed(() => {
 
 // OCR API
 const OCR_API = {
-  idFront: '/dental-finance/customer/customerInfo/ocr/idCardFront',
-  idBack: '/dental-finance/customer/customerInfo/ocr/idCardBack',
-  bankCard: '/dental-finance/customer/customerInfo/ocr/bankCard',
+  idFront: '/customer/customerInfo/ocr/idCardFront',
+  idBack: '/customer/customerInfo/ocr/idCardBack',
+  bankCard: '/customer/customerInfo/ocr/bankCard',
 } as const
 
 function parseUploadData(uploadRes: any) {
@@ -480,20 +707,163 @@ function chooseImage(type: 'idFront' | 'idBack' | 'bankCard') {
   })
 }
 
-function nextStep() {
+async function nextStep() {
   if (currentStep.value === 1) {
-    if (!form.value.name || !form.value.idCardNo || !form.value.cardNumber) {
-      uni.showToast({ title: '请完善信息', icon: 'none' })
+    // 步骤1: 信息补充
+    if (!basicDraft.value.name || !basicDraft.value.phone) {
+      uni.showToast({ title: '请完善基本信息', icon: 'none' })
       return
     }
     currentStep.value = 2
   }
   else if (currentStep.value === 2) {
-    if (!signatureImage.value) {
-      uni.showToast({ title: '请完成签名', icon: 'none' })
+    // 步骤2: 合同信息补充 - 先添加客户信息，再创建合同
+    if (!contractForm.value.contractName) {
+      uni.showToast({ title: '请输入合同名称', icon: 'none' })
       return
     }
-    currentStep.value = 3
+
+    // 构建客户信息 payload
+    const customerPayload = {
+      // 客户基本信息
+      name: basicDraft.value.name || form.value.name || '',
+      customerName: basicDraft.value.name || form.value.name || '',
+      sex: Number(basicDraft.value.sex) || 1,
+      age: Number(basicDraft.value.age) || 0,
+      phone: basicDraft.value.phone || '',
+      idCard: basicDraft.value.idCard || form.value.idCardNo || '',
+      idCardFrontUrl: basicDraft.value.idCardFrontUrl || form.value.idFrontFileUrl || '',
+      idCardBackUrl: form.value.idBackFileUrl || '',
+      email: basicDraft.value.email || '',
+      wechatOpenid: extraForm.value.wechatOpenid || '',
+      address: basicDraft.value.address || '',
+
+      // 合同信息
+      contractName: contractForm.value.contractName,
+      contractAmount: Number(contractDraft.value.contractAmount) || 0,
+      contractType: contractDraft.value.configCode || '',
+      operationFee: contractDraft.value.operationFee || 0,
+      serviceFee: contractDraft.value.serviceFee || 0,
+      signDate: extraForm.value.signDate || '',
+      startDate: extraForm.value.startDate || '',
+      endDate: extraForm.value.endDate || '',
+
+      // 宣传信息
+      compaignPeriod: Number(contractForm.value.publicityMonths) || 0,
+      recomAmount: Number(contractForm.value.recommendCount) || 0,
+
+      // 还款信息
+      period: Number(contractForm.value.installmentCount) || 0,
+      installment: Number(contractForm.value.perAmount) || 0,
+      repaymentDay: Number(contractForm.value.firstRepaymentDate?.split('-')[2]) || 0,
+      repaymentDate: extraForm.value.repaymentDate || '',
+      firstRepaymentDate: contractForm.value.firstRepaymentDate || '',
+
+      // 银行卡信息
+      bankCardNo: form.value.cardNumber || '',
+      bankName: extraForm.value.bankName || '',
+      bankCardUrl: form.value.bankCardFileUrl || '',
+      expireDate: extraForm.value.expireDate || '',
+
+      // 邀请信息
+      inviteCode: basicDraft.value.inviteCode || '',
+      invitePerson: extraForm.value.invitePerson || '',
+      inviteName: extraForm.value.inviteName || '',
+
+      // 服务委托方
+      designatedOrg: serviceProviderOptions[contractForm.value.serviceProviderIndex],
+
+      // 医生签名
+      doctorName: contractForm.value.doctorSign || '',
+    }
+
+    uni.showLoading({ title: '提交中...' })
+    try {
+      // 1. 先添加客户信息，获取 customerCode
+      const addRes = await addCustomer(customerPayload)
+      console.log(addRes)
+      const customerCode = addRes || ''
+
+      // 2. 生成牙科合同
+      if (customerCode) {
+        await generateDentalContract(customerCode)
+      }
+
+      // 3. 生成推荐合同
+      if (customerCode) {
+        await generateRecommendContract(customerCode)
+      }
+
+      // 4. 添加成功后创建合同
+      const createRes = await paasV2CreateContract({
+        customerCode: customerCode,
+        contractName: contractForm.value.contractName
+      })
+      const certificationUrl = createRes?.certificationUrl || ''
+      const contractId = createRes?.contractId || ''
+
+      // 保存合同ID
+      contractDraft.value = {
+        ...contractDraft.value,
+        contractId: contractId,
+      }
+      uni.setStorageSync('customer-contract-draft', contractDraft.value)
+
+      // 5. 打开实名认证页面
+      if (certificationUrl) {
+        uni.hideLoading()
+        pendingContractId = contractId
+        sessionStorage.setItem('pendingContractId', contractId)
+        sessionStorage.setItem('pendingAction', 'verify')
+        uni.showModal({
+          title: '实名认证',
+          content: '即将打开实名认证页面，完成认证后返回继续签约',
+          confirmText: '去认证',
+          success: (modalRes) => {
+            if (modalRes.confirm) {
+              window.location.href = certificationUrl
+            }
+            else {
+              pendingContractId = null
+              sessionStorage.removeItem('pendingContractId')
+              sessionStorage.removeItem('pendingAction')
+            }
+          },
+        })
+        return
+      }
+
+      // 保存合同数据
+      contractDraft.value = {
+        ...contractDraft.value,
+        contractName: contractForm.value.contractName,
+        fileLists: contractForm.value.fileLists,
+        installmentCount: contractForm.value.installmentCount,
+        perAmount: contractForm.value.perAmount,
+        bankName: contractForm.value.bankName,
+        publicityMonths: contractForm.value.publicityMonths,
+        recommendCount: contractForm.value.recommendCount,
+        firstRepaymentDate: contractForm.value.firstRepaymentDate,
+        serviceProvider: serviceProviderOptions[contractForm.value.serviceProviderIndex],
+        doctorSign: contractForm.value.doctorSign,
+      }
+      uni.setStorageSync('customer-contract-draft', contractDraft.value)
+      currentStep.value = 3
+    }
+    catch {
+      uni.showToast({ title: '提交失败', icon: 'none' })
+    }
+    finally {
+      uni.hideLoading()
+    }
+  }
+  else if (currentStep.value === 3) {
+    // 步骤3: 乙方签署
+    if (!signatureImage.value) {
+      uni.showToast({ title: '请完成乙方签名', icon: 'none' })
+      return
+    }
+    currentStep.value = 4
   }
 }
 
@@ -503,7 +873,7 @@ function getVerifyCode() {
 }
 
 // 活体检测
-const LIVENESS_API = '/dental-finance/customer/customerInfo/liveness/check'
+const LIVENESS_API = '/customer/customerInfo/liveness/check'
 
 function startLivenessCheck() {
   uni.chooseVideo({
@@ -565,6 +935,14 @@ function onRepaymentStatusChange(e: any) {
   extraForm.value.repaymentStatus = Number(e.detail.value)
 }
 
+function onFirstRepaymentDateChange(e: any) {
+  contractForm.value.firstRepaymentDate = e.detail.value
+}
+
+function onServiceProviderChange(e: any) {
+  contractForm.value.serviceProviderIndex = Number(e.detail.value)
+}
+
 function normalizeDateTime(dateStr?: string) {
   if (!dateStr)
     return ''
@@ -582,62 +960,15 @@ function onDateTimeChange(field: 'expireDate' | 'repaymentDate' | 'signDate' | '
 }
 
 async function submitAll() {
-  console.log('Submitting with data:', {
-    basicDraft: basicDraft.value,
-    contractDraft: contractDraft.value,
-    form: form.value,
-    extraForm: extraForm.value,
-  })
-  if (!basicDraft.value.name || !basicDraft.value.phone) {
-    uni.showToast({ title: '请先完善基础信息', icon: 'none' })
-    return
-  }
-
-  const payload = {
-    name: basicDraft.value.name || form.value.name || '',
-    sex: Number(basicDraft.value.sex) || 1,
-    age: Number(basicDraft.value.age) || 0,
-    phone: basicDraft.value.phone || '',
-    idCard: basicDraft.value.idCard || form.value.idCardNo || '',
-    idCardFrontUrl: basicDraft.value.idCardFrontUrl || form.value.idFrontFileUrl || '',
-    idCardBackUrl: form.value.idBackFileUrl || '',
-    email: basicDraft.value.email || '',
-    wechatOpenid: extraForm.value.wechatOpenid || '',
-    address: basicDraft.value.address || '',
-    repaymentStatus: Number(extraForm.value.repaymentStatus || 0),
-    bankCardNo: form.value.cardNumber || '',
-    bankName: extraForm.value.bankName || '',
-    bankCardUrl: form.value.bankCardFileUrl || '',
-    expireDate: extraForm.value.expireDate || '',
-    repaymentDate: extraForm.value.repaymentDate || '',
-    inviteCode: basicDraft.value.inviteCode || '',
-    invitePerson: extraForm.value.invitePerson || '',
-    inviteName: extraForm.value.inviteName || '',
-    contractAmount: Number(contractDraft.value.contractAmount) || 0,
-    contractType: Number(contractDraft.value.contractType) || 0,
-    signDate: extraForm.value.signDate || '',
-    startDate: extraForm.value.startDate || '',
-    endDate: extraForm.value.endDate || '',
-  }
-
-  uni.showLoading({ title: '提交中...' })
-  try {
-    await http.post('/dental-finance/customer/customerInfo/add', payload)
-    uni.showToast({ title: '签约完成', icon: 'success' })
-    uni.removeStorageSync('customer-basic-draft')
-    uni.removeStorageSync('customer-contract-draft')
-    setTimeout(() => {
-      uni.redirectTo({
-        url: '/pages/Repayment/index',
-      })
-    }, 800)
-  }
-  catch {
-    uni.showToast({ title: '提交失败，请稍后重试', icon: 'none' })
-  }
-  finally {
-    uni.hideLoading()
-  }
+  // addCustomer 已在步骤2调用
+  uni.showToast({ title: '签约完成', icon: 'success' })
+  uni.removeStorageSync('customer-basic-draft')
+  uni.removeStorageSync('customer-contract-draft')
+  setTimeout(() => {
+    uni.redirectTo({
+      url: '/pages/Repayment/index',
+    })
+  }, 800)
 }
 
 function goBack() {
@@ -653,6 +984,21 @@ onMounted(() => {
 
   form.value.name = basicDraft.value.name || form.value.name
   form.value.idCardNo = basicDraft.value.idCard || form.value.idCardNo
+
+  // 恢复合同表单数据
+  if (contractDraft.value.installmentCount) {
+    contractForm.value.contractName = contractDraft.value.contractName || ''
+    contractForm.value.fileLists = contractDraft.value.fileLists || []
+    contractForm.value.installmentCount = contractDraft.value.installmentCount
+    contractForm.value.perAmount = contractDraft.value.perAmount
+    contractForm.value.bankName = contractDraft.value.bankName
+    contractForm.value.publicityMonths = contractDraft.value.publicityMonths
+    contractForm.value.recommendCount = contractDraft.value.recommendCount
+    contractForm.value.firstRepaymentDate = contractDraft.value.firstRepaymentDate
+    const providerIndex = serviceProviderOptions.indexOf(contractDraft.value.serviceProvider || '')
+    contractForm.value.serviceProviderIndex = providerIndex > -1 ? providerIndex : 0
+    contractForm.value.doctorSign = contractDraft.value.doctorSign || ''
+  }
 
   if (!basicDraft.value.name || !basicDraft.value.phone) {
     uni.showToast({ title: '请先填写基础信息', icon: 'none' })
@@ -821,6 +1167,13 @@ onMounted(() => {
 
 .form-row {
   margin-bottom: 20rpx;
+}
+
+.form-label {
+  font-size: 28rpx;
+  color: #333;
+  margin-bottom: 12rpx;
+  padding-left: 8rpx;
 }
 
 .mt-20 {

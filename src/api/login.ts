@@ -30,7 +30,7 @@ export function login(loginForm: ILoginForm) {
  * @param loginForm 登录表单
  */
 export function mLogin(loginForm: ILoginForm) {
-  return http.post<any>('/dental-finance/sys/mLogin', loginForm)
+  return http.post<any>('/sys/mLogin', loginForm)
 }
 
 /**
@@ -74,7 +74,7 @@ export function updateUserPassword(data: IUpdatePassword) {
  * @param mobile 手机号
  */
 export function sendSmsCode(mobile: string) {
-  return http.post<{ success: boolean, message: string }>(`/dental-finance/customer/customerInfo/mobile/code?mobile=${mobile}`)
+  return http.post<{ success: boolean, message: string }>(`/customer/customerInfo/mobile/code?mobile=${mobile}`)
 }
 
 /**
@@ -83,5 +83,5 @@ export function sendSmsCode(mobile: string) {
  * @param smsCode 验证码
  */
 export function smsLogin(mobile: string, smsCode: string) {
-  return http.post<ICustomerMobileLoginRes>(`/dental-finance/customer/customerInfo/mobile/login?mobile=${mobile}&smsCode=${smsCode}`)
+  return http.post<ICustomerMobileLoginRes>(`/customer/customerInfo/mobile/login?mobile=${mobile}&smsCode=${smsCode}`)
 }

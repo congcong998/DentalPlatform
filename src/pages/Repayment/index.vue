@@ -104,7 +104,7 @@ const remark = ref('')
 
 const showSummary = ref(false)
 
-const REPAYMENT_ADD_API = '/dental-finance/repayment/repaymentPlan/add'
+const REPAYMENT_ADD_API = '/repayment/repaymentPlan/add'
 
 function onLoanTypeChange(e: any) {
   loanTypeIndex.value = e.detail.value

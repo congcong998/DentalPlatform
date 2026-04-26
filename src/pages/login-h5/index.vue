@@ -11,6 +11,9 @@ defineOptions({
 })
 
 definePage({
+  // #ifndef H5
+  type: 'home',
+  // #endif
   style: {
     navigationBarTitleText: 'H5登录',
   },

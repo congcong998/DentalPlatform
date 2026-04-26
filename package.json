@@ -156,9 +156,6 @@
   "pnpm": {
     "overrides": {
       "unconfig": "7.3.2"
-    },
-    "patchedDependencies": {
-      "@uni-helper/vite-plugin-uni-pages@0.3.23": "patches/@uni-helper__vite-plugin-uni-pages@0.3.23.patch"
     }
   },
   "overrides": {
