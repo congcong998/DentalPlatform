@@ -31,5 +31,9 @@ export function getRepaymentPlanById(id: string) {
  * 还款计划-列表查询
  */
 export function getRepaymentPlanList(params?: { customerCode?: string, contractCode?: string }) {
-  return http.get<{ records: IRepaymentPlan[], total: number }>('/repayment/repaymentPlan/list', params)
+  return http.get<{ records: IRepaymentPlan[], total: number }>('/repayment/repaymentPlan/list', {
+    pageNo: 1,
+    pageSize: 100,
+    ...params,
+  })
 }

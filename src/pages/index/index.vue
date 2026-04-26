@@ -200,7 +200,7 @@ function handleDetail(item: IRepaymentPlan) {
           <view class="flex items-center justify-between">
             <view class="flex-1">
               <view class="flex items-center">
-                <text class="text-base text-gray-800 font-medium">第 {{ item.seqNo }} 期</text>
+                <text class="text-base text-gray-800 font-medium">第 {{ item.seqNo + 1 }} 期</text>
                 <text class="ml-2 text-xs" :class="getStatusColor(item.repaymentStatus)">
                   {{ getStatusText(item.repaymentStatus) }}
                 </text>

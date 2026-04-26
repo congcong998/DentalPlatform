@@ -33,6 +33,7 @@ function goHomeAfterLogin() {
 }
 
 definePage({
+
   style: {
     navigationStyle: 'custom',
     navigationBarTitleText: '登录',

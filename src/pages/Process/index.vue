@@ -144,6 +144,11 @@
           <input v-model="contractForm.doctorSign" class="common-input" placeholder="请输入医生签名">
         </view>
 
+        <view class="form-row">
+          <view class="form-label">签约地址</view>
+          <input v-model="contractForm.signAddr" class="common-input" placeholder="请输入签约地址">
+        </view>
+
         <button class="btn-primary mt-40" @click="nextStep">
           下一步
         </button>
@@ -324,6 +329,7 @@ const contractForm = ref({
   firstRepaymentDate: '',    // 首次还款日期
   serviceProviderIndex: 0,   // 服务委托方索引
   doctorSign: '',            // 医生签名
+  signAddr: '',              // 签约地址
 })
 
 // 签字相关
@@ -395,8 +401,8 @@ async function handlePartyBSignComplete(contractId: string) {
       sessionStorage.setItem('pendingAction', 'partyA')
       // 重置标志
       isProcessingReturn = false
-      // 使用 replace 避免历史记录问题
-      window.location.replace(partyAUrl)
+      // 使用 href 跳转，用户可以返回
+      window.location.href = partyAUrl
       return
     }
     else {
@@ -426,7 +432,7 @@ async function handlePartyASignComplete(contractId: string) {
   uni.showToast({ title: '签署完成', icon: 'success' })
   isProcessingReturn = false
   setTimeout(() => {
-    uni.redirectTo({ url: '/pages/BasicInfo/index' })
+    window.location.href = '/pages/BasicInfo/index'
   }, 800)
 }
 
@@ -745,6 +751,7 @@ async function nextStep() {
       operationFee: contractDraft.value.operationFee || 0,
       serviceFee: contractDraft.value.serviceFee || 0,
       signDate: extraForm.value.signDate || '',
+      signAddr: contractForm.value.signAddr || '',
       startDate: extraForm.value.startDate || '',
       endDate: extraForm.value.endDate || '',
 
@@ -761,7 +768,7 @@ async function nextStep() {
 
       // 银行卡信息
       bankCardNo: form.value.cardNumber || '',
-      bankName: extraForm.value.bankName || '',
+      bankName: contractForm.value.bankName || '',
       bankCardUrl: form.value.bankCardFileUrl || '',
       expireDate: extraForm.value.expireDate || '',
 
@@ -846,6 +853,7 @@ async function nextStep() {
         firstRepaymentDate: contractForm.value.firstRepaymentDate,
         serviceProvider: serviceProviderOptions[contractForm.value.serviceProviderIndex],
         doctorSign: contractForm.value.doctorSign,
+        signAddr: contractForm.value.signAddr,
       }
       uni.setStorageSync('customer-contract-draft', contractDraft.value)
       currentStep.value = 3
@@ -863,7 +871,24 @@ async function nextStep() {
       uni.showToast({ title: '请完成乙方签名', icon: 'none' })
       return
     }
-    currentStep.value = 4
+    // 获取合同ID并调用乙方签署
+    const contractId = contractDraft.value.contractId || ''
+    if (contractId) {
+      handlePartyBSignComplete(contractId)
+    }
+    else {
+      uni.showToast({ title: '缺少合同ID', icon: 'none' })
+    }
+  }
+  else if (currentStep.value === 4) {
+    // 步骤4: 甲方签署完成，跳转到BasicInfo
+    const contractId = contractDraft.value.contractId || ''
+    if (contractId) {
+      handlePartyASignComplete(contractId)
+    }
+    else {
+      uni.showToast({ title: '缺少合同ID', icon: 'none' })
+    }
   }
 }
 
@@ -998,6 +1023,7 @@ onMounted(() => {
     const providerIndex = serviceProviderOptions.indexOf(contractDraft.value.serviceProvider || '')
     contractForm.value.serviceProviderIndex = providerIndex > -1 ? providerIndex : 0
     contractForm.value.doctorSign = contractDraft.value.doctorSign || ''
+    contractForm.value.signAddr = contractDraft.value.signAddr || ''
   }
 
   if (!basicDraft.value.name || !basicDraft.value.phone) {
