@@ -160,52 +160,12 @@
           乙方签署
         </view>
 
-        <view class="contract-box">
-          <text class="contract-text">在此处显示合同条款内容...</text>
-          <text class="contract-text">1. 借款人需按时还款...</text>
-          <text class="contract-text">2. 逾期将产生罚息...</text>
+        <view class="tip-box">
+          <text class="tip-text">请在下方完成合同签署</text>
         </view>
 
-        <view class="signature-box" @click="handleSign">
-          <view v-if="!signatureImage" class="sign-placeholder">
-            点击此处进行手写签名
-          </view>
-          <image v-else :src="signatureImage" mode="heightFix" class="sign-img" />
-        </view>
-        <view class="sign-tip">
-          请在上方区域完成签名
-        </view>
-
-        <!-- 签字弹层 -->
-        <view v-if="showSignPad && !isSigningForPartyA" class="sign-modal">
-          <view class="sign-panel">
-            <view class="sign-title">
-              请在下方签字
-            </view>
-            <canvas
-              id="signCanvas"
-              canvas-id="signCanvas"
-              class="sign-canvas"
-              @touchstart.stop.prevent="onSignStart"
-              @touchmove.stop.prevent="onSignMove"
-              @touchend.stop.prevent="onSignEnd"
-            />
-            <view class="sign-actions">
-              <button class="sign-btn" @click="clearSign">
-                清空
-              </button>
-              <button class="sign-btn" @click="cancelSign">
-                取消
-              </button>
-              <button class="sign-btn primary" @click="confirmSign">
-                确认
-              </button>
-            </view>
-          </view>
-        </view>
-
-        <button class="btn-primary mt-40" @click="nextStep">
-          下一步
+        <button class="btn-primary mt-40" @click="retrySign">
+          重试合同签署
         </button>
       </view>
 
@@ -215,61 +175,12 @@
           甲方签署
         </view>
 
-        <view class="contract-box">
-          <text class="contract-text">在此处显示合同条款内容...</text>
-          <text class="contract-text">1. 甲方需按时付款...</text>
-          <text class="contract-text">2. 逾期将产生违约责任...</text>
+        <view class="tip-box">
+          <text class="tip-text">请在下方完成合同签署</text>
         </view>
 
-        <view class="signature-box" @click="handlePartyASign">
-          <view v-if="!partyASignatureImage" class="sign-placeholder">
-            点击此处进行手写签名（甲方）
-          </view>
-          <image v-else :src="partyASignatureImage" mode="heightFix" class="sign-img" />
-        </view>
-        <view class="sign-tip">
-          请在上方区域完成甲方签名
-        </view>
-
-        <!-- 签字弹层 -->
-        <view v-if="showSignPad && isSigningForPartyA" class="sign-modal">
-          <view class="sign-panel">
-            <view class="sign-title">
-              请在下方签字
-            </view>
-            <canvas
-              id="signCanvas"
-              canvas-id="signCanvas"
-              class="sign-canvas"
-              @touchstart.stop.prevent="onSignStart"
-              @touchmove.stop.prevent="onSignMove"
-              @touchend.stop.prevent="onSignEnd"
-            />
-            <view class="sign-actions">
-              <button class="sign-btn" @click="clearSign">
-                清空
-              </button>
-              <button class="sign-btn" @click="cancelSign">
-                取消
-              </button>
-              <button class="sign-btn primary" @click="confirmSign">
-                确认
-              </button>
-            </view>
-          </view>
-        </view>
-
-        <view class="agreement-check mt-40">
-          <checkbox-group @change="onAgreementChange">
-            <label class="agreement-label">
-              <checkbox value="agree" :checked="isAgreed" />
-              <text>我已阅读并同意《服务协议》</text>
-            </label>
-          </checkbox-group>
-        </view>
-
-        <button class="btn-primary mt-40" :disabled="!canPartyASubmit" @click="submitAll">
-          完成签约
+        <button class="btn-primary mt-40" @click="retrySign">
+          重试合同签署
         </button>
       </view>
     </view>
@@ -434,6 +345,17 @@ async function handlePartyASignComplete(contractId: string) {
   setTimeout(() => {
     window.location.href = '/pages/BasicInfo/index'
   }, 800)
+}
+
+// 重试合同签署（重新进行乙方和甲方签署）
+function retrySign() {
+  const contractId = contractDraft.value.contractId || ''
+  if (!contractId) {
+    uni.showToast({ title: '缺少合同ID', icon: 'none' })
+    return
+  }
+  // 从乙方签署开始重新签署
+  handleVerificationComplete(contractId)
 }
 
 // 监听页面显示，检测签署流程是否完成
@@ -840,54 +762,16 @@ async function nextStep() {
         return
       }
 
-      // 保存合同数据
-      contractDraft.value = {
-        ...contractDraft.value,
-        contractName: contractForm.value.contractName,
-        fileLists: contractForm.value.fileLists,
-        installmentCount: contractForm.value.installmentCount,
-        perAmount: contractForm.value.perAmount,
-        bankName: contractForm.value.bankName,
-        publicityMonths: contractForm.value.publicityMonths,
-        recommendCount: contractForm.value.recommendCount,
-        firstRepaymentDate: contractForm.value.firstRepaymentDate,
-        serviceProvider: serviceProviderOptions[contractForm.value.serviceProviderIndex],
-        doctorSign: contractForm.value.doctorSign,
-        signAddr: contractForm.value.signAddr,
-      }
-      uni.setStorageSync('customer-contract-draft', contractDraft.value)
-      currentStep.value = 3
+      // certificationUrl 为空，直接进行乙方签署
+      uni.hideLoading()
+      handleVerificationComplete(contractId)
+      return
     }
     catch {
       uni.showToast({ title: '提交失败', icon: 'none' })
     }
     finally {
       uni.hideLoading()
-    }
-  }
-  else if (currentStep.value === 3) {
-    // 步骤3: 乙方签署
-    if (!signatureImage.value) {
-      uni.showToast({ title: '请完成乙方签名', icon: 'none' })
-      return
-    }
-    // 获取合同ID并调用乙方签署
-    const contractId = contractDraft.value.contractId || ''
-    if (contractId) {
-      handlePartyBSignComplete(contractId)
-    }
-    else {
-      uni.showToast({ title: '缺少合同ID', icon: 'none' })
-    }
-  }
-  else if (currentStep.value === 4) {
-    // 步骤4: 甲方签署完成，跳转到BasicInfo
-    const contractId = contractDraft.value.contractId || ''
-    if (contractId) {
-      handlePartyASignComplete(contractId)
-    }
-    else {
-      uni.showToast({ title: '缺少合同ID', icon: 'none' })
     }
   }
 }
@@ -997,7 +881,14 @@ async function submitAll() {
 }
 
 function goBack() {
-  uni.navigateBack()
+  // 在步骤中循环返回
+  if (currentStep.value > 1) {
+    currentStep.value--
+  }
+  else {
+    // 如果在第一步，退出到产品选择页面
+    uni.navigateBack()
+  }
 }
 
 onMounted(() => {
@@ -1236,6 +1127,17 @@ onMounted(() => {
     color: #666;
     line-height: 1.8;
     margin-bottom: 10rpx;
+  }
+}
+
+// Tip Box Styles
+.tip-box {
+  padding: 60rpx 30rpx;
+  text-align: center;
+
+  .tip-text {
+    font-size: 28rpx;
+    color: #666;
   }
 }
 
